@@ -5305,7 +5305,9 @@ function renderPostReview(){
     el.innerHTML=`<div class="empty"><div class="ico">📝</div>No posts to review yet.<br><br><button class="btn btn-k btn-sm" onclick="importReviewModal()">Import a batch</button><div style="font-size:11px;margin-top:10px">Paste a batch of LinkedIn drafts and review them here — approve, edit, or cut.</div></div>`;
     return;
   }
-  const list = prFilter==='approved'?approved : prFilter==='cut'?cut : pending;
+  // Show in batch order: newest batch first, posts 1→N within each batch (so #1 is at the top, last post at the bottom).
+  const list = (prFilter==='approved'?approved : prFilter==='cut'?cut : pending)
+    .slice().sort((a,b)=> (b.addedAt||'').localeCompare(a.addedAt||'') || ((a.num||0)-(b.num||0)));
   const filters=`<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
     ${[['pending','To review',pending.length],['approved','Approved',approved.length],['cut','Cut',cut.length]].map(([f,lbl,n])=>`<button class="btn btn-sm ${prFilter===f?'btn-k':'btn-ghost'}" onclick="setPrFilter('${f}')">${lbl} (${n})</button>`).join('')}</div>`;
   const cards = list.length ? list.map(prCard).join('') : `<div class="empty">Nothing ${prFilter==='pending'?'to review':prFilter} right now.</div>`;
