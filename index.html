@@ -456,6 +456,7 @@ details>summary::-webkit-details-marker{display:none}
     <!-- ═══ BOARDROOM PRODUCT ═══ -->
     <div class="page" id="page-boardroom">
       <div class="grid-4" id="boardroom-stats" style="margin-bottom:16px"></div>
+      <div id="boardroom-checklist" style="margin-bottom:18px"></div>
       <div class="grid-2">
         <div>
           <div class="sec-hdr">Service Model</div>
@@ -653,8 +654,7 @@ details>summary::-webkit-details-marker{display:none}
 
     <!-- ═══ CAPABILITY MAP ═══ -->
     <div class="page" id="page-capmap">
-      <div class="grid-4" id="cap-stats" style="margin-bottom:12px"></div>
-      <div style="height:8px;background:var(--bdr);border-radius:4px;overflow:hidden;margin-bottom:16px"><div id="cap-prog-bar" style="height:100%;background:var(--grn);transition:width .4s"></div></div>
+      <div class="grid-4" id="cap-stats" style="margin-bottom:14px"></div>
       <div id="cap-render"></div>
     </div>
 
@@ -850,6 +850,34 @@ const CAPS = [
   {p:"Systems",id:"sys-monday",n:"Monday.com Attendee Tracking",o:"James",d:"green"},
   {p:"Systems",id:"sys-ai",n:"AI Tooling Across Team",o:"James",d:"amber"},
 ];
+// Enriched detail per capability (from the capability map CSV) — gap, dependencies, phase targets, green-state, Danny's notes.
+const CAP_DETAIL = {
+  "brd-model":{pr:`High`,gap:`No 12-month curriculum. No member journey map. Implementation sessions undefined. Danny needs more speaking time. Pods need reducing to 4-5.`,dep:`Products & Tools (partial); WhatsApp Structure`,unl:`Products & Tools; Sales Materials; Implementation Sessions; Customer Retention`,p1:`Confirm S2 agenda and implementation session concept`,p2:`Draft 12-month member journey and Boardroom Day run-of-show`,p3:`Full service blueprint complete and shown to prospects`,grn:`Documented 12-month member journey. Boardroom Day run-of-show template. Implementation session format defined.`,note:`Danny: 'are we comfortable that when they invest £12k we know what every month looks like?'`},
+  "brd-tools":{pr:`High`,gap:`No defined toolset. Presentation materials below Danny's standard. No curriculum or member-facing resources.`,dep:`Service Model must be defined first`,unl:`Customer Retention; Sales Materials; Member experience quality`,p1:`Not in scope — service model must come first`,p2:`Begin building tools once service model defined`,p3:`Full suite complete: deck; pod brief cards; member resource library; implementation guide`,grn:`A suite of polished materials for every touchpoint. All meet the standard Danny set after S1.`,note:`Danny: 'Products and tools — probably red for me right now.'`},
+  "brd-onboard":{pr:`High`,gap:`No standardised sequence. Joe and Chloe had confusion about who sends what and when. No email templates. No WhatsApp add trigger.`,dep:`WhatsApp Structure; Service Model`,unl:`Community Management; Retention; Team relationship-building`,p1:`Onboarding playbook complete with all templates and Chloe checklist`,p2:`In use for all new S2 members`,p3:`Review and iterate based on first 5 member experiences`,grn:`Step-by-step playbook with email templates; calendar invite; WhatsApp add trigger; Chloe-facing checklist. Runs without questions.`,note:`Chloe: 'I would like clarity — a template email and know at what point to send the diary invite.'`},
+  "brd-retain":{pr:`Critical`,gap:`Retention entirely dependent on Danny. No team touchpoint system. No shared client context record.`,dep:`Onboarding; WhatsApp Community; Team relationship habits`,unl:`Long-term revenue; Word-of-mouth referrals; Scale beyond Danny`,p1:`Team members each introduced to boardroom members at S2`,p2:`Each team member has had a direct conversation with 100% of members`,p3:`Shared client context doc per member; regular touchpoints calendar-blocked`,grn:`Every team member knows every boardroom member. Touchpoints are systematic not accidental.`,note:`Danny: 'Ed has spent half a million pounds over five years because I know everything about him — his business; his family; his kids.'`},
+  "brd-impl":{pr:`Medium`,gap:`No defined format, inputs or outputs for bi-monthly online sessions. August diaries not yet booked from S2.`,dep:`Service Model; Boardroom Day outcomes`,unl:`Member retention; Perceived product value; NPS`,p1:`Implementation session concept agreed and communicated to S2 attendees`,p2:`August session booked in all S2 member diaries; format defined`,p3:`First implementation session run and reviewed`,grn:`Defined format with pre-session prep; Danny facilitation guide; clear outcomes. All member diaries booked on Day 1.`,note:`Danny: 'What are the inputs? What are the outputs?'`},
+  "brd-budget":{pr:`Medium`,gap:`No shared model. Danny holds it in his head. No visibility on profitability at 10/15/20 members.`,dep:`Current cost data from Danny; revenue figures`,unl:`Investment decisions; Hiring; Event ROI analysis`,p1:`Not in scope phase 1`,p2:`Draft model with known costs and revenue scenarios`,p3:`Live spreadsheet reviewed monthly by team`,grn:`Live spreadsheet: revenue vs costs at 5/10/15/20 member scenarios. Profit margin dashboard visible to whole team.`,note:`Danny: 'Budget is red. You need to think about what this is all going to cost.'`},
+  "evt-logistics":{pr:`High`,gap:`No SOP. No run sheet template. Padel needs planning now. Standard: 'should run like a wedding'.`,dep:`Will You partnership; venue confirmation; Chloe availability`,unl:`Post-event content; Testimonials; Event ROI; Attendee follow-up`,p1:`Padel logistics confirmed — venue; time; format; guest list`,p2:`Padel event run to wedding standard; SOP documented`,p3:`Reusable template applied to second event (Golf Day)`,grn:`Master event template (pre/day-of/post checklists). Chloe can run any event type without questions.`,note:`Danny: 'We need to know we're there at 7:30; not 8:00. How we greet customers.'`},
+  "evt-wa":{pr:`High`,gap:`Three-tier structure agreed but not built. No rules. No launch trigger. Risk: launches without structure; becomes chaotic.`,dep:`Joe's governance document; member numbers at threshold`,unl:`Customer Retention; Onboarding timing; Brand community value`,p1:`Governance document and rules ready; launch trigger defined (12 paying members)`,p2:`Boardroom group live (if 12+ confirmed); weekly posting rhythm started`,p3:`Community engagement reviewed; second event group live`,grn:`Three groups active with rules in place. Jasper posts weekly prompts. No off-topic content.`,note:`Danny: 'It can get out of hand. This is about supporting each other from a business sense.'`},
+  "evt-content":{pr:`High`,gap:`No process. S1 produced strong feedback but not systematically captured. Content from every event is lost.`,dep:`Events happening; Joe's content calendar`,unl:`LinkedIn content; Sales materials; Website social proof`,p1:`Post-event process built and ready before Padel`,p2:`3 testimonials + 3 photos + 1 LinkedIn post captured within 24 hours of Padel`,p3:`S1 testimonials formalised and in use across sales materials and website`,grn:`Within 24 hours of every event: 3 photos; 2 quotes; LinkedIn wrap-up ready. Storage folder live.`,note:`S1 had NPS 73 and 100% commit rate — that social proof is sitting unused.`},
+  "evt-crew":{pr:`Low`,gap:`No gap. Working well. Maintain.`,dep:`None`,unl:`Podcast recordings; event production quality`,p1:`Maintain`,p2:`Maintain`,p3:`Maintain`,grn:`Already green. Protect this.`,note:``},
+  "evt-roi":{pr:`Low`,gap:`No tracking. Unknown which channels produce best attendees and cost-per-boardroom-lead.`,dep:`Events data (starts with Padel); Budget model`,unl:`Data-driven event strategy; Marketing allocation`,p1:`Not in scope phase 1`,p2:`Padel ROI logged (cost; attendees; pipeline conversations; conversions)`,p3:`After 3 events; data shows patterns; budget decisions evidence-based`,grn:`After each event a row is added to the ROI tracker. Budget decisions are evidence-based.`,note:``},
+  "sal-process":{pr:`Critical`,gap:`No documented process. Danny 'wings it'. Lost a £9k/month deal by giving the prospect 24 hours. No close sequence. No materials in meetings.`,dep:`Payment mechanism; Sales materials (Joe)`,unl:`Pipeline follow-up; Team doing sales; Sales materials effectiveness`,p1:`Sales framework documented — 1-page visual flow + close sequence`,p2:`Danny using framework in every conversation; tracking what works`,p3:`Framework reviewed and refined; Joe able to run a sales meeting`,grn:`One-page framework Danny knows from memory: pre-meeting → meeting → close (payment link sent before prospect leaves) → follow-up within 2 hours.`,note:`Danny: 'I should have sent the payment link before they'd got in their cars. I gave them 24 hours to pontificate.'`},
+  "sal-pipeline":{pr:`Critical`,gap:`No pipeline view beyond S1 attendees. Ben Kumar; Mark O'Meala; PIN; Craig Ward — all warm but untracked.`,dep:`Sales framework (defines stages); Monday.com`,unl:`Revenue growth; Conversion tracking; Forecasting`,p1:`Ben Kumar and 3+ other prospects followed up personally this week`,p2:`All warm prospects in Monday.com with status and next-action date; reviewed weekly`,p3:`Pipeline stage conversion data available; Danny uses it to prioritise`,grn:`Every live prospect has a Monday.com status; a next-action date; and a drafted follow-up message. Pipeline reviewed weekly.`,note:`Danny: 'We always need to circle back on people that were going to come that didn't. Ben Kumar. Mark O'Meala. PIN...'`},
+  "sal-materials":{pr:`High`,gap:`No sales deck. No leave-behind. Danny had nothing to hand in the conversation he lost.`,dep:`Service model (Joe); S1 testimonials (Jasper)`,unl:`Sales close rate; Team doing sales; Product credibility`,p1:`Not in scope phase 1 — needs service model first`,p2:`5-7 slide deck + one-page leave-behind complete; Danny using in every meeting`,p3:`Materials updated with Padel and S2 testimonials; deck reviewed quarterly`,grn:`A sales deck and one-page leave-behind that Danny pulls out in every meeting as standard.`,note:`Danny had no materials in the meeting he lost. 'I didn't have the right materials ready.'`},
+  "mkt-linkedin":{pr:`High`,gap:`No content calendar. 75/25 ratio agreed not implemented. No drafting workflow. Not anchored to Five Stages.`,dep:`Content calendar (Joe); Danny approval cadence`,unl:`Inbound leads; Event attendees; Brand authority; Podcast listeners`,p1:`First 4 posts drafted by Joe; approved and published`,p2:`Weekly posting cadence live; Joe drafts; Danny approves in <24 hours`,p3:`Content performance reviewed; 8-week calendar rolled forward`,grn:`2 posts per week. Joe drafts. Danny approves in <24h. Anchored to Five Stages. Consistent engagement.`,note:`Danny: 'LinkedIn should be 75% insight/perspective; 25% promotional. Sell a feeling and lifestyle.'`},
+  "mkt-social":{pr:`Medium`,gap:`No strategy. Sporadic posting. No behind-the-scenes content from S1 or events.`,dep:`Content calendar; Event content capture (Jasper); Team on camera`,unl:`Brand trust; Event registrations; Podcast audience growth`,p1:`Not in scope phase 1`,p2:`Weekly content from Padel event and team moments`,p3:`Content reviewed; engagement tracked; cadence established`,grn:`Weekly Reels/Shorts from events; podcast clips; team moments. Feels live and energetic.`,note:``},
+  "mkt-cal":{pr:`High`,gap:`Does not exist. No editorial rhythm. No post bank. LinkedIn and Instagram strategies undocumented.`,dep:`Nothing — can be built now`,unl:`LinkedIn; Instagram/YouTube; Event marketing; Podcast promotion`,p1:`8-week calendar for both platforms built and agreed`,p2:`Calendar in active use; Joe updating monthly`,p3:`Calendar includes podcast episodes; event wrap-ups; testimonials`,grn:`8-week rolling calendar for both platforms. Reviewed monthly. Danny approves LinkedIn. Joe owns Instagram.`,note:``},
+  "mkt-web":{pr:`High`,gap:`Current site doesn't lead with Five Stages. No Boardroom product page. Weak first impression for every prospect who Googles TUF.`,dep:`Service model; Joe on design; Brand assets`,unl:`Sales close rate; Inbound leads; Brand perception`,p1:`Sitemap and homepage copy written`,p2:`Website redesign in progress (design phase)`,p3:`Website live — homepage; Boardroom page; About Danny; Podcast; Apply`,grn:`Homepage opens with Five Stages. Founder self-identifies their stage. Boardroom product page is compelling. Matches the in-room standard.`,note:``},
+  "mkt-evtmkt":{pr:`Medium`,gap:`No reusable templates. Invitations and social posts created from scratch each time.`,dep:`Content calendar; Brand assets; Padel details (Jasper)`,unl:`Event attendance rate; Brand consistency; Future event efficiency`,p1:`Not in scope phase 1`,p2:`Padel event invitation and social post produced`,p3:`Reusable template library for invitations; social posts; announcements`,grn:`A template library Joe or Jasper can adapt for any event in under an hour.`,note:``},
+  "pod-guests":{pr:`High`,gap:`No structured guest list. Ad hoc bookings. Savas and Oli Marchant identified but not yet contacted.`,dep:`Danny theme approval`,unl:`Podcast content pipeline; LinkedIn clips; Brand authority; International reach`,p1:`20+ guest longlist built; Savas and Oli Marchant contacted`,p2:`3 guests confirmed and scheduled; outreach system running`,p3:`Guests confirmed 4-6 weeks ahead at all times`,grn:`A 20+ guest longlist with outreach underway. 3 guests confirmed at any time. Recording scheduled 4-6 weeks ahead.`,note:`Podcast already proven: US client became 'massive fan' through it.`},
+  "pod-process":{pr:`Medium`,gap:`No guest briefing. No content capture checklist. Clips and quotes not produced systematically.`,dep:`Guest confirmed; Crew Digital`,unl:`Content calendar (podcast clips); Social proof; SEO`,p1:`SOP document built`,p2:`SOP in use for next recording`,p3:`Every episode: 5 clips and 3 quotes ready within 5 days of recording`,grn:`Every recording has a briefing doc. James has a content capture checklist. Within 5 days: 5 clips; 3 quotes ready for Joe.`,note:``},
+  "pod-crew":{pr:`Low`,gap:`No gap. Functioning well.`,dep:`None`,unl:`Podcast recordings; Content quality`,p1:`Maintain`,p2:`Maintain`,p3:`Maintain`,grn:`Already green.`,note:``},
+  "sys-map":{pr:`High`,gap:`Map exists as a static document. Needs to be a live Notion database with RAG scores updated as capabilities improve.`,dep:`This analysis (now complete)`,unl:`Team accountability; Quarterly reviews; Future client offering`,p1:`Capability map live in Notion database (this week)`,p2:`RAG scores updated post-S2 review`,p3:`First quarterly re-score complete; dashboard visible to Danny`,grn:`Live Notion database with all 22 capabilities. RAG updated monthly. Owner assigned. Dashboard Danny can check any time.`,note:`Danny: 'Do you think one of our clients needs this service?' — the map itself becomes a client offering.`},
+  "sys-monday":{pr:`Low`,gap:`No gap. S1 attendee board working well. Needs extending to full sales pipeline.`,dep:`None`,unl:`Pipeline visibility; Follow-up tracking; Conversion data`,p1:`Extend to cover full sales pipeline (not just post-event attendees)`,p2:`Pipeline board active alongside attendee board`,p3:`Pipeline data feeding into sales decisions`,grn:`Already green. Extended to cover full prospect pipeline as well as attendee tracking.`,note:``},
+  "sys-ai":{pr:`High`,gap:`Team not systematically using AI. Jasper has no laptop. Joe aware of Claude but no workflow.`,dep:`Jasper's laptop (immediate); James training sessions`,unl:`Team output capacity; Faster builds; Future client AI offering`,p1:`Jasper's laptop ordered. James introduces Claude to team with one practical use case each.`,p2:`Every team member has one AI workflow embedded; Jasper using tools on new laptop`,p3:`AI tooling embedded in every daily workflow; team producing at 2x capacity`,grn:`Every team member uses Claude daily. Output quality and speed reflect AI advantage. Client-facing AI capability scoped.`,note:`Danny: 'I want a highly profitable business with a small team using AI tools.'`},
+};
 
 const S2_CHECKS = [
   {id:"s2a",t:"Pod groups confirmed at 4-5 (not 6)",o:"joe"},
@@ -3634,33 +3662,71 @@ function deleteFile(id){if(!confirm('Remove?'))return;ls.set('tuf_files',ls.get(
 // ═══ CAPABILITY MAP ══════════════════════════════════════════════════════════
 function getRAG(id){return ls.str('tuf_rag_'+id)||CAPS.find(c=>c.id===id)?.d||'amber';}
 function cycleRAG(s){return s==='red'?'amber':s==='amber'?'green':'red';}
+let capView='all'; // 'all' | 'attention' | 'owner'
+function setCapView(v){ capView=v; renderCapMap(); }
+function ragCounts(caps){ const c={red:0,amber:0,green:0}; caps.forEach(x=>c[getRAG(x.id)]++); return c; }
+function ragBar(c){ const tot=c.red+c.amber+c.green||1; return `<div style="display:flex;height:8px;border-radius:20px;overflow:hidden;background:var(--bg-2)">${c.red?`<div style="width:${c.red/tot*100}%;background:var(--red)"></div>`:''}${c.amber?`<div style="width:${c.amber/tot*100}%;background:var(--amb)"></div>`:''}${c.green?`<div style="width:${c.green/tot*100}%;background:var(--grn)"></div>`:''}</div>`; }
+function capPhase(){ const d=new Date().toISOString().slice(0,10); if(d<='2026-07-02')return{n:'Phase 1',by:'2 Jul 2026',key:'p1'}; if(d<='2026-07-31')return{n:'Phase 2',by:'31 Jul 2026',key:'p2'}; if(d<='2026-09-01')return{n:'Phase 3',by:'1 Sep 2026',key:'p3'}; return{n:'Beyond the 90-day plan',by:'',key:'p3'}; }
+function capUpdatedLabel(id){ const ts=ls.str('tuf_capupd_'+id,''); if(!ts)return''; const days=Math.floor((Date.now()-new Date(ts).getTime())/86400000); return days<=0?'updated today':days===1?'updated 1d ago':'updated '+days+'d ago'; }
+function ownersOf(c){ return (c.o||'').split('/').map(s=>s.trim()).filter(Boolean); }
+function capCard(c){
+  const s=getRAG(c.id), d=CAP_DETAIL[c.id]||{}, phase=capPhase(), upd=capUpdatedLabel(c.id), note=ls.str('tuf_capnote_'+c.id,'');
+  const o1=(ownersOf(c)[0]||'').toLowerCase();
+  const prTag = d.pr?`<span class="tag ${d.pr==='Critical'?'tag-r':d.pr==='High'?'tag-a':'tag-b'}" style="font-size:9px">${d.pr}</span>`:'';
+  const tRow=(lbl,txt,active)=>`<div style="display:flex;gap:8px;padding:4px 0">
+      <span style="flex-shrink:0;width:62px;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:${active?'var(--txt)':'var(--mut)'};font-weight:${active?'800':'600'}">${lbl}${active?' ◀':''}</span>
+      <span style="flex:1;font-size:11.5px;color:${active?'var(--txt)':'var(--mut)'};font-weight:${active?'600':'400'}">${escHtml(txt||'—')}</span></div>`;
+  return `<details class="card" style="margin-bottom:8px;border-left:4px solid ${s==='red'?'var(--red)':s==='amber'?'var(--amb)':'var(--grn)'}">
+    <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <button class="rag ${s}" onclick="event.preventDefault();event.stopPropagation();toggleCAP('${c.id}')" title="Click to change status">${s.toUpperCase()}</button>
+      <span style="flex:1;min-width:140px;font-size:13px;font-weight:600">${escHtml(c.n)}</span>
+      ${prTag}
+      <span class="tag tag-${o1}" style="font-size:9px">${escHtml(c.o)}</span>
+      ${upd?`<span style="font-size:9px;color:var(--mut)">${upd}</span>`:''}
+    </summary>
+    <div style="margin-top:12px;font-size:12px;line-height:1.6">
+      <div style="margin-bottom:10px"><span style="font-weight:700">Gap:</span> <span style="color:var(--mut)">${escHtml(d.gap||'—')}</span></div>
+      ${(d.dep||d.unl)?`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px">
+        <div style="flex:1;min-width:150px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--mut);letter-spacing:.5px">Depends on</div><div style="font-size:11.5px;color:var(--mut)">${escHtml(d.dep||'—')}</div></div>
+        <div style="flex:1;min-width:150px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--mut);letter-spacing:.5px">Unlocks</div><div style="font-size:11.5px;color:var(--mut)">${escHtml(d.unl||'—')}</div></div></div>`:''}
+      <div style="background:var(--bg-2);border-radius:8px;padding:10px 12px;margin-bottom:10px">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--mut);letter-spacing:.5px;margin-bottom:4px">Phase targets</div>
+        ${tRow('by 2 Jul',d.p1,phase.key==='p1')}${tRow('by 31 Jul',d.p2,phase.key==='p2')}${tRow('by 1 Sep',d.p3,phase.key==='p3')}
+      </div>
+      <div style="margin-bottom:10px"><span style="font-weight:700;color:var(--grn)">Green state:</span> <span style="color:var(--mut)">${escHtml(d.grn||'—')}</span></div>
+      ${d.note?`<div style="border-left:3px solid var(--y);padding:5px 10px;font-style:italic;color:var(--mut);margin-bottom:10px">${escHtml(d.note)}</div>`:''}
+      <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--mut);letter-spacing:.5px;margin-bottom:4px">Latest update</div>
+        <div style="display:flex;gap:8px"><input class="form-input" id="capnote-${c.id}" value="${escHtml(note)}" placeholder="Add a progress note…" style="flex:1;font-size:12px"><button class="btn btn-ghost btn-sm" onclick="saveCapNote('${c.id}')">Save</button></div></div>
+    </div>
+  </details>`;
+}
 function renderCapMap(){
-  const reds=CAPS.filter(c=>getRAG(c.id)==='red').length;
-  const ambs=CAPS.filter(c=>getRAG(c.id)==='amber').length;
-  const grns=CAPS.filter(c=>getRAG(c.id)==='green').length;
-  const tot=CAPS.length;
+  const counts=ragCounts(CAPS), tot=CAPS.length;
+  const critReds=CAPS.filter(c=>getRAG(c.id)==='red'&&['Critical','High'].includes((CAP_DETAIL[c.id]||{}).pr)).length;
   document.getElementById('cap-stats').innerHTML=`
-    <div class="stat r"><div class="n">${reds}</div><div class="l">Red</div></div>
-    <div class="stat a"><div class="n">${ambs}</div><div class="l">Amber</div></div>
-    <div class="stat g"><div class="n">${grns}</div><div class="l">Green</div></div>
-    <div class="stat y"><div class="n">${Math.round((grns/tot)*100)}%</div><div class="l">Green Rate</div></div>
-  `;
-  document.getElementById('cap-prog-bar').style.width=((grns/tot)*100)+'%';
-  const pillars=[...new Set(CAPS.map(c=>c.p))];
-  document.getElementById('cap-render').innerHTML=pillars.map(p=>`
-    <div style="font-family:'Montserrat',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;background:var(--k);color:var(--w);padding:6px 12px;border-radius:5px 5px 0 0;margin-top:14px">${p}</div>
-    ${CAPS.filter(c=>c.p===p).map(c=>{
-      const s=getRAG(c.id);
-      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--card);border:1px solid var(--bdr);border-top:none">
-        <span style="flex:1;font-size:12px">${c.n}</span>
-        <span style="font-size:10px;color:var(--mut)">${c.o}</span>
-        <button class="rag ${s}" onclick="toggleCAP('${c.id}')">${s.toUpperCase()}</button>
-      </div>`;
-    }).join('')}
-  `).join('');
+    <div class="stat r"><div class="n">${counts.red}</div><div class="l">Red${critReds?` · ${critReds} crit/high`:''}</div></div>
+    <div class="stat a"><div class="n">${counts.amber}</div><div class="l">Amber</div></div>
+    <div class="stat g"><div class="n">${counts.green}</div><div class="l">Green</div></div>
+    <div class="stat y"><div class="n">${Math.round(counts.green/tot*100)}%</div><div class="l">Green Rate</div></div>`;
+  const phase=capPhase(), pillars=[...new Set(CAPS.map(c=>c.p))], owners=['Danny','Joe','Jasper','James','Team'];
+  let html=`<div class="card" style="display:flex;align-items:center;gap:10px;background:var(--bg-2);border-style:dashed;margin-bottom:14px"><span class="tag tag-k" style="font-size:10px;flex-shrink:0">CURRENT</span><span style="font-size:12px"><strong>${phase.n}</strong>${phase.by?` — target by ${phase.by}`:''}. Each capability's current-phase target is highlighted.</span></div>`;
+  html+=`<div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">${[['all','All'],['attention','Needs attention'],['owner','By owner']].map(([k,l])=>`<button class="btn btn-sm ${capView===k?'btn-k':'btn-ghost'}" onclick="setCapView('${k}')">${l}</button>`).join('')}</div>`;
+  html+=`<div class="sec-hdr">Health by pillar</div><div class="grid-2" style="margin-bottom:18px">`+pillars.map(p=>{ const c=ragCounts(CAPS.filter(x=>x.p===p)); return `<div class="card" style="margin-bottom:0"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-weight:700;font-size:12px">${p}</span><span style="font-size:10px;color:var(--mut)">${c.red}R · ${c.amber}A · ${c.green}G</span></div>${ragBar(c)}</div>`; }).join('')+`</div>`;
+  html+=`<div class="sec-hdr">Accountability by owner</div><div class="grid-3" style="margin-bottom:20px">`+owners.map(o=>{ const mine=CAPS.filter(x=>ownersOf(x).includes(o)); if(!mine.length)return''; const c=ragCounts(mine); return `<div class="card" style="margin-bottom:0;border-left:4px solid ${USER_COLOURS[o]||'#888'}"><div style="font-weight:700;font-size:12px;margin-bottom:6px">${o} <span style="font-weight:400;color:var(--mut);font-size:10px">· ${mine.length}</span></div>${ragBar(c)}<div style="font-size:10px;color:var(--mut);margin-top:5px">${c.red} red · ${c.amber} amber · ${c.green} green</div></div>`; }).filter(Boolean).join('')+`</div>`;
+  html+=`<div class="sec-hdr">Capabilities</div>`;
+  if(capView==='owner'){
+    owners.forEach(o=>{ const mine=CAPS.filter(x=>ownersOf(x).includes(o)); if(!mine.length)return; html+=`<div style="font-family:'Montserrat',sans-serif;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:${USER_COLOURS[o]||'#888'};margin:14px 0 8px">${o}</div>`+mine.map(capCard).join(''); });
+  } else {
+    let caps=CAPS.slice(); if(capView==='attention') caps=caps.filter(c=>getRAG(c.id)!=='green');
+    if(capView==='attention'&&!caps.length){ html+=`<div class="empty">Nothing red or amber — everything's green. 🎉</div>`; }
+    else pillars.forEach(p=>{ const inP=caps.filter(c=>c.p===p); if(!inP.length)return; html+=`<div style="font-family:'Montserrat',sans-serif;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin:14px 0 8px">${p}</div>`+inP.map(capCard).join(''); });
+  }
+  document.getElementById('cap-render').innerHTML=html;
   renderCapSidebar();
 }
-function toggleCAP(id){ls.setStr('tuf_rag_'+id,cycleRAG(getRAG(id)));renderCapMap();}
+function toggleCAP(id){ ls.setStr('tuf_rag_'+id,cycleRAG(getRAG(id))); ls.setStr('tuf_capupd_'+id,new Date().toISOString()); renderCapMap(); }
+function setCAP(id,rag){ ls.setStr('tuf_rag_'+id,rag); ls.setStr('tuf_capupd_'+id,new Date().toISOString()); renderCapMap(); }
+function saveCapNote(id){ ls.setStr('tuf_capnote_'+id,document.getElementById('capnote-'+id)?.value||''); ls.setStr('tuf_capupd_'+id,new Date().toISOString()); renderCapMap(); }
 function renderCapSidebar(){const r=CAPS.filter(c=>getRAG(c.id)==='red').length;const b=document.getElementById('sb-red');if(b){b.textContent=r;b.style.display=r?'inline':'none';}}
 
 // ═══ GOALS ═══════════════════════════════════════════════════════════════════
@@ -5180,7 +5246,77 @@ function renderBoardroom(){
   }).join(''):'<div style="font-size:11px;color:var(--mut)">None yet</div>');
   roster+=`<div style="display:flex;gap:6px;margin-top:12px"><button class="btn btn-k btn-sm" style="flex:1" onclick="brAddRosterModal()">+ Add from CRM</button><button class="btn btn-ghost btn-sm" style="flex:1" onclick="brAddGuestModal()">+ Add guest</button></div>`;
   document.getElementById('boardroom-roster').innerHTML=roster;
+  renderBoardroomChecklist();
   document.getElementById('topbar-actions').innerHTML=`<button class="btn btn-ghost btn-sm" onclick="nav('members',document.querySelector('[data-page=members]'))">View All Members</button>`;
+}
+
+// ── Boardroom event checklist (one ongoing editable list) ──
+let brEditId=null;
+function renderBoardroomChecklist(){
+  const el=document.getElementById('boardroom-checklist'); if(!el) return;
+  const list=ls.get('tuf_boardroom_checklist',[])||[];
+  const done=list.filter(i=>i.done).length;
+  const ownerOpts=`<option value="">Owner…</option>`+TASK_PEOPLE.map(p=>`<option value="${p}">${p}</option>`).join('');
+  const rows=list.length?list.map(i=>{
+    if(i.id===brEditId){
+      return `<div class="chk-row" style="cursor:default">
+        <div class="chk-box${i.done?' ':''}"></div>
+        <input class="form-input" id="br-edit-input" value="${escHtml(i.text)}" style="flex:1;font-size:13px" onkeydown="if(event.key==='Enter')saveBoardroomTask('${i.id}');if(event.key==='Escape'){brEditId=null;renderBoardroomChecklist();}">
+        <button class="btn btn-k btn-sm" onclick="saveBoardroomTask('${i.id}')">Save</button>
+        <button class="btn btn-ghost btn-sm" onclick="brEditId=null;renderBoardroomChecklist()">Cancel</button>
+      </div>`;
+    }
+    return `<div class="chk-row${i.done?' done':''}">
+      <div class="chk-box" onclick="toggleBoardroomTask('${i.id}')">${i.done?'✓':''}</div>
+      <span class="chk-text" style="flex:1;font-size:13px" onclick="toggleBoardroomTask('${i.id}')">${escHtml(i.text)}</span>
+      ${i.owner?`<span class="tag tag-${(i.owner||'').toLowerCase()}" style="font-size:9px">${escHtml(i.owner)}</span>`:''}
+      <button class="btn btn-ghost btn-sm" style="padding:2px 8px" title="Edit" onclick="editBoardroomTask('${i.id}')">✏️</button>
+      <button class="btn btn-ghost btn-sm" style="padding:2px 8px" title="Delete" onclick="deleteBoardroomTask('${i.id}')">✕</button>
+    </div>`;
+  }).join(''):'<div class="empty" style="padding:20px"><div class="ico">✅</div>No items yet. Add the first task for the Boardroom event below.</div>';
+  el.innerHTML=`
+    <div class="sec-hdr">Boardroom Event Checklist</div>
+    <div class="card">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <input class="form-input" id="br-new-text" placeholder="Add a task for the Boardroom event…" style="flex:1;min-width:180px" onkeydown="if(event.key==='Enter')addBoardroomTask()">
+        <select class="form-select" id="br-new-owner" style="max-width:130px">${ownerOpts}</select>
+        <button class="btn btn-k btn-sm" onclick="addBoardroomTask()">+ Add</button>
+      </div>
+      ${rows}
+      <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--mut)">${done} of ${list.length} done</span>
+        ${done?`<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="clearBoardroomDone()">Clear completed</button>`:''}
+        ${list.length?`<button class="btn btn-red btn-sm"${done?'':' style="margin-left:auto"'} onclick="resetBoardroomChecklist()">Reset list</button>`:''}
+      </div>
+    </div>`;
+}
+function addBoardroomTask(){
+  const t=(document.getElementById('br-new-text')?.value||'').trim(); if(!t) return;
+  const owner=document.getElementById('br-new-owner')?.value||'';
+  const list=ls.get('tuf_boardroom_checklist',[])||[];
+  list.push({id:uid(),text:t,done:false,owner});
+  ls.set('tuf_boardroom_checklist',list); renderBoardroomChecklist();
+}
+function toggleBoardroomTask(id){
+  const list=ls.get('tuf_boardroom_checklist',[])||[]; const i=list.findIndex(x=>x.id===id); if(i<0) return;
+  list[i].done=!list[i].done; ls.set('tuf_boardroom_checklist',list); renderBoardroomChecklist();
+}
+function editBoardroomTask(id){ brEditId=id; renderBoardroomChecklist(); const inp=document.getElementById('br-edit-input'); if(inp){ inp.focus(); inp.select(); } }
+function saveBoardroomTask(id){
+  const list=ls.get('tuf_boardroom_checklist',[])||[]; const i=list.findIndex(x=>x.id===id); if(i<0) return;
+  const v=(document.getElementById('br-edit-input')?.value||'').trim(); if(v) list[i].text=v;
+  brEditId=null; ls.set('tuf_boardroom_checklist',list); renderBoardroomChecklist();
+}
+function deleteBoardroomTask(id){
+  if(!confirm('Delete this item?')) return;
+  ls.set('tuf_boardroom_checklist',(ls.get('tuf_boardroom_checklist',[])||[]).filter(x=>x.id!==id)); renderBoardroomChecklist();
+}
+function clearBoardroomDone(){
+  ls.set('tuf_boardroom_checklist',(ls.get('tuf_boardroom_checklist',[])||[]).filter(x=>!x.done)); renderBoardroomChecklist();
+}
+function resetBoardroomChecklist(){
+  if(!confirm('Clear the whole checklist for the next event?')) return;
+  ls.set('tuf_boardroom_checklist',[]); brEditId=null; renderBoardroomChecklist();
 }
 let brPrevSel='';
 function brPrevOptions(){
