@@ -765,6 +765,7 @@ const COMPANY_DOMAIN = '@businesschangegroup.com';
 let taskPersonFilter='Mine';
 let taskViewMode='section';
 let taskStatusFilter='Open';
+let taskFocusPerson=null; // set by Team Overview drill-down; scrolls to that person once
 let briefWho='mine';
 let briefScope='today';
 const SUPABASE_URL = 'https://tzbjikrnvphbbwfxjxdv.supabase.co';
@@ -1524,6 +1525,8 @@ function nav(page, el){
 }
 // Navigate to a page and highlight its sidebar item (for clickable dashboard tiles etc.)
 function goPage(page){ nav(page, document.querySelector('[data-page='+page+']')); }
+// Drill from a Team Overview card into that person's open tasks (By Person view, scrolled to them).
+function goPersonTasks(p){ taskViewMode='person'; taskStatusFilter='Open'; taskFocusPerson=p; goPage('tasks'); }
 function renderPage(page){
   const fns = {
     home:renderHome, tasks:renderTasks, transcript:renderTranscript,
@@ -2113,7 +2116,7 @@ function renderTasksByPerson(tasks,today){
     const pTasks=person==='All'?tasks:tasks.filter(t=>t.owner===person);
     if(!pTasks.length||person==='All')return;
     const color=USER_COLOURS[person]||'#666';
-    html+=`<div style="margin-bottom:18px">
+    html+=`<div id="ptask-${person}" style="margin-bottom:18px;scroll-margin-top:80px">
       <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--k);border-radius:6px 6px 0 0;margin-bottom:1px">
         <div style="width:10px;height:10px;border-radius:50%;background:${color}"></div>
         <span style="font-size:12px;font-weight:700;color:var(--w);flex:1">${person}</span>
@@ -2123,6 +2126,13 @@ function renderTasksByPerson(tasks,today){
     </div>`;
   });
   document.getElementById('action-list').innerHTML=html||'<div class="empty">No tasks</div>';
+  // If we arrived via a Team Overview drill-down, scroll to that person once and flash them.
+  if(taskFocusPerson){
+    const target=document.getElementById('ptask-'+taskFocusPerson); taskFocusPerson=null;
+    if(target){ target.scrollIntoView({behavior:'smooth',block:'start'});
+      target.style.transition='box-shadow .25s'; target.style.boxShadow='0 0 0 2px var(--y)';
+      setTimeout(()=>{ target.style.boxShadow=''; }, 1400); }
+  }
 }
 
 function renderTaskRows(tasks,today){
@@ -6454,9 +6464,10 @@ function renderTeamOverview(){
       ? `<div style="border-radius:8px;overflow:hidden;border:1px solid var(--bdr);border-top:none">${renderTaskRows(active,today)}</div>`
       : `<div class="empty" style="padding:18px"><div class="ico">✅</div>All clear — nothing open.</div>`;
     return `<div class="card" style="border-left:4px solid ${colour}">
-      <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-wrap:wrap">
+      <div onclick="goPersonTasks('${p}')" title="Open ${p}'s tasks" style="display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-wrap:wrap;cursor:pointer">
         <div style="width:11px;height:11px;border-radius:50%;background:${colour};flex-shrink:0"></div>
         <span style="font-family:'Montserrat',sans-serif;font-weight:700;font-size:15px">${p}</span>
+        <span style="font-size:11px;color:var(--mut)">›</span>
         <span style="margin-left:auto;display:flex;gap:5px;flex-wrap:wrap;align-items:center;justify-content:flex-end">${chips}</span>
       </div>
       ${body}
