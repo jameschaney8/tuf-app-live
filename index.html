@@ -1974,6 +1974,7 @@ function quickCompleteTask(id){
   tasks[i].status = tasks[i].status==='Done'?'To Do':'Done';
   tasks[i].completedAt = tasks[i].status==='Done'?new Date().toISOString():null;
   ls.set('tuf_tasks', tasks);
+  syncBoardroomFromTask(id);
   renderBriefTasks();
   updateTaskBadge();
 }
@@ -2145,6 +2146,7 @@ function cycleTaskStatus(id){
   tasks[i].status = next[tasks[i].status]||'To Do';
   tasks[i].completedAt = tasks[i].status==='Done'?new Date().toISOString():null;
   ls.set('tuf_tasks',tasks);
+  syncBoardroomFromTask(id);
   renderTasks();
   renderBriefTasks();
 }
@@ -2236,6 +2238,7 @@ function updateTask(id){
     completedAt:document.getElementById('et-status').value==='Done'?(tasks[i].completedAt||new Date().toISOString()):null,
   };
   ls.set('tuf_tasks',tasks);
+  syncBoardroomFromTask(id);
   if(!wasDone && tasks[i].status==='Done'){ addNotif(`Task done: "${tasks[i].title}"`); sendTaskCompleteEmail(tasks[i]).catch(()=>{}); }
   closeModal(); renderTasks(); renderBriefTasks();
 }
@@ -2243,6 +2246,7 @@ function updateTask(id){
 function deleteTask(id){
   if(!confirm('Delete this task?'))return;
   ls.set('tuf_tasks',ls.get('tuf_tasks',[]).filter(x=>x.id!==id));
+  removeBoardroomItemForTask(id);
   closeModal(); renderTasks(); renderBriefTasks();
 }
 
@@ -2273,8 +2277,9 @@ function renderHome(){
   const notContacted = ls.get('tuf_warm',[]).filter(w=>w.status==='Not Contacted');
   if(notContacted.length) pis.push({type:'urgent',tag:'FOLLOW-UP',text:`Warm prospects not yet contacted: ${notContacted.map(w=>w.name).join(', ')}`,owner:'Danny'});
   // Stale lead alert
-  const staleLeads=ls.get('tuf_prospects',[]).filter(p=>p.stage!=='Won'&&p.stage!=='Lost'&&p.lastContact&&daysUntil(p.lastContact)<-7);
-  if(staleLeads.length) pis.push({type:'soon',tag:'STALE',text:`${staleLeads.length} pipeline prospect${staleLeads.length!==1?'s':''} not contacted in 7+ days: ${staleLeads.map(p=>p.name).join(', ')}`,owner:'Danny'});
+  const _today=new Date().toISOString().slice(0,10);
+  const dueLeads=ls.get('tuf_prospects',[]).filter(p=>prospectDue(p,_today));
+  if(dueLeads.length){ const od=dueLeads.filter(p=>prospectDue(p,_today)==='overdue').length; pis.push({type:od?'urgent':'soon',tag:'FOLLOW-UPS',text:`${dueLeads.length} prospect${dueLeads.length!==1?'s':''} need a follow-up${od?` (${od} overdue)`:''}: ${dueLeads.slice(0,6).map(p=>p.name).join(', ')}${dueLeads.length>6?'…':''}`,owner:'Danny'}); }
   MILESTONES.forEach(m=>{const d=daysUntil(m.date);if(d===0)pis.push({type:'urgent',tag:'TODAY',text:m.t,owner:m.o});else if(d>0&&d<=3)pis.push({type:'urgent',tag:d+'d',text:m.t,owner:m.o});else if(d>3&&d<=7)pis.push({type:'soon',tag:d+'d',text:m.t,owner:m.o});});
   const redCaps=CAPS.filter(c=>(ls.str('tuf_rag_'+c.id)||c.d)==='red');
   if(redCaps.length) pis.push({type:'info',tag:'RED',text:`${redCaps.length} RED capabilities: ${redCaps.map(c=>c.n).join(' · ')}`,owner:'Review'});
@@ -2669,14 +2674,130 @@ function renderPipeline(){
   const tabContent = document.getElementById('pipeline-tab-content');
   if(!tabBar || !tabContent) return;
   const newLeads = ls.get('tuf_event_leads',[]).filter(l=>l.status==='New Lead').length;
+  const today=new Date().toISOString().slice(0,10);
+  const dueCount=(ls.get('tuf_prospects',[])||[]).filter(p=>prospectDue(p,today)).length;
   tabBar.innerHTML=`
+    <button class="btn ${pipelineTab==='followups'?'btn-k':'btn-ghost'} btn-sm" onclick="setPipelineTab('followups')">Follow-ups ${dueCount?`<span style="background:var(--red);color:#fff;border-radius:10px;font-size:9px;padding:1px 5px;margin-left:4px">${dueCount}</span>`:''}</button>
     <button class="btn ${pipelineTab==='pipeline'?'btn-k':'btn-ghost'} btn-sm" onclick="setPipelineTab('pipeline')">Sales Pipeline</button>
-    <button class="btn ${pipelineTab==='eventleads'?'btn-k':'btn-ghost'} btn-sm" onclick="setPipelineTab('eventleads')">Event Leads ${newLeads?`<span style="background:var(--amb);color:#fff;border-radius:10px;font-size:9px;padding:1px 5px;margin-left:4px">${newLeads}</span>`:''}  </button>`;
-  if(pipelineTab==='pipeline') renderKanban();
+    <button class="btn ${pipelineTab==='eventleads'?'btn-k':'btn-ghost'} btn-sm" onclick="setPipelineTab('eventleads')">Event Leads ${newLeads?`<span style="background:var(--amb);color:#fff;border-radius:10px;font-size:9px;padding:1px 5px;margin-left:4px">${newLeads}</span>`:''}</button>`;
+  if(pipelineTab==='followups') renderFollowups();
+  else if(pipelineTab==='pipeline') renderKanban();
   else renderEventLeads();
 }
 function setPipelineTab(t){pipelineTab=t;renderPipeline();}
-let pipelineTab='pipeline';
+let pipelineTab='followups';
+function prospectDue(p, today){
+  if(p.stage==='Won'||p.stage==='Lost'||p.convertedToMemberId) return null;
+  if(p.nextActionDate && p.nextActionDate < today) return 'overdue';
+  if(!p.nextActionDate && p.lastContact && daysUntil(p.lastContact) < -7) return 'overdue';
+  if(p.nextActionDate === today) return 'today';
+  return null;
+}
+function followupRow(p){
+  const today=new Date().toISOString().slice(0,10);
+  const tempCol=p.temp==='Hot'?'var(--red)':p.temp==='Warm'?'var(--amb)':'var(--blu)';
+  const since=p.lastContact?`last contacted ${Math.abs(daysUntil(p.lastContact))}d ago`:'never contacted';
+  const overdue=p.nextActionDate&&p.nextActionDate<today;
+  return `<div class="card" style="margin-bottom:8px;border-left:4px solid ${tempCol}">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <div style="flex:1;min-width:150px;cursor:pointer" onclick="editProspectModal('${p.id}')">
+        <div style="font-weight:700;font-size:13px">${escHtml(p.name)} <span style="font-weight:400;color:var(--mut);font-size:11px">${escHtml(p.co||'')}</span></div>
+        <div style="font-size:10px;color:var(--mut);margin-top:2px;display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+          <span class="tag" style="font-size:9px;background:#eee;color:#555">${escHtml(p.stage)}</span>
+          ${p.temp?`<span class="tag ${p.temp==='Hot'?'tag-r':p.temp==='Warm'?'tag-a':'tag-b'}" style="font-size:9px">${p.temp}</span>`:''}
+          <span>${since}${p.nextActionDate?` · <span style="color:${overdue?'var(--red)':'var(--mut)'};font-weight:700">due ${fmtShort(p.nextActionDate)}</span>`:''}</span>
+        </div>
+        ${p.nextAction?`<div style="font-size:11.5px;margin-top:3px">${escHtml(p.nextAction)}</div>`:''}
+      </div>
+      <button class="btn btn-y btn-sm" onclick="event.stopPropagation();draftFollowupModal('${p.id}')">✏️ Draft</button>
+      <button class="btn btn-k btn-sm" onclick="event.stopPropagation();logContactModal('${p.id}')">✓ Log contact</button>
+    </div>
+  </div>`;
+}
+function renderFollowups(){
+  const el=document.getElementById('pipeline-tab-content'); if(!el) return;
+  const today=new Date().toISOString().slice(0,10);
+  const ps=ls.get('tuf_prospects',[])||[];
+  const overdue=ps.filter(p=>prospectDue(p,today)==='overdue').sort((a,b)=>((a.nextActionDate||a.lastContact||'').localeCompare(b.nextActionDate||b.lastContact||'')));
+  const dueToday=ps.filter(p=>prospectDue(p,today)==='today');
+  const won=ps.filter(p=>p.stage==='Won').length, lost=ps.filter(p=>p.stage==='Lost').length;
+  const active=ps.filter(p=>p.stage!=='Won'&&p.stage!=='Lost').length;
+  const winRate=(won+lost)?Math.round(won/(won+lost)*100):0;
+  let html=`<div class="grid-4" style="margin-bottom:14px">
+    <div class="stat ${overdue.length?'r':''}"><div class="n">${overdue.length}</div><div class="l">Overdue</div></div>
+    <div class="stat ${dueToday.length?'a':''}"><div class="n">${dueToday.length}</div><div class="l">Due today</div></div>
+    <div class="stat"><div class="n">${active}</div><div class="l">Active</div></div>
+    <div class="stat g"><div class="n">${winRate}%</div><div class="l">Win rate</div></div>
+  </div>`;
+  if(!overdue.length&&!dueToday.length){
+    html+=`<div class="empty"><div class="ico">✅</div>All caught up — no follow-ups due.<div style="font-size:11px;margin-top:8px">Set a "next action date" on a prospect (or use Log contact) to schedule your next chase.</div></div>`;
+  } else {
+    if(overdue.length){ html+=`<div class="sec-hdr" style="color:var(--red)">Overdue · ${overdue.length}</div>`+overdue.map(followupRow).join(''); }
+    if(dueToday.length){ html+=`<div class="sec-hdr" style="margin-top:16px">Due today · ${dueToday.length}</div>`+dueToday.map(followupRow).join(''); }
+  }
+  el.innerHTML=html;
+  document.getElementById('topbar-actions').innerHTML=`<button class="btn btn-k btn-sm" onclick="addProspectModal()">+ Add Prospect</button>`;
+}
+function logContactModal(id){
+  const p=(ls.get('tuf_prospects',[])||[]).find(x=>x.id===id); if(!p) return;
+  showModal(`Log contact — ${escHtml(p.name)}`,`
+    <div style="font-size:12px;color:var(--mut);margin-bottom:10px">Marks them contacted today, then schedule the next chase so they don't slip.</div>
+    <div class="form-row"><label class="form-label">Next action</label><input class="form-input" id="lc-action" value="${escHtml(p.nextAction||'')}" placeholder="e.g. Send proposal / call back"></div>
+    <div class="form-row"><label class="form-label">Next action date</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+        <button class="btn btn-ghost btn-sm" onclick="lcSetDate(0)">Today</button>
+        <button class="btn btn-ghost btn-sm" onclick="lcSetDate(3)">+3 days</button>
+        <button class="btn btn-ghost btn-sm" onclick="lcSetDate(7)">+7 days</button>
+        <button class="btn btn-ghost btn-sm" onclick="lcSetDate(14)">+14 days</button>
+      </div>
+      <input class="form-input" type="date" id="lc-date" value="${p.nextActionDate||''}">
+    </div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-k" onclick="saveLogContact('${id}')">Log contact</button>`);
+}
+function lcSetDate(days){ const d=new Date(); d.setDate(d.getDate()+days); const el=document.getElementById('lc-date'); if(el) el.value=d.toISOString().slice(0,10); }
+function saveLogContact(id){
+  const list=ls.get('tuf_prospects',[])||[]; const i=list.findIndex(x=>x.id===id); if(i<0) return;
+  list[i].lastContact=new Date().toISOString().slice(0,10);
+  list[i].nextAction=(document.getElementById('lc-action')?.value||'').trim();
+  list[i].nextActionDate=document.getElementById('lc-date')?.value||'';
+  ls.set('tuf_prospects',list); closeModal(); renderPipeline();
+}
+function draftFollowupModal(id){
+  const p=(ls.get('tuf_prospects',[])||[]).find(x=>x.id===id); if(!p) return;
+  showModal(`Draft follow-up — ${escHtml(p.name)}`,`
+    <div class="form-row"><label class="form-label">Channel</label><select class="form-select" id="fu-channel"><option>LinkedIn DM</option><option>Email</option><option>WhatsApp</option></select></div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><button class="btn btn-k btn-sm" id="fu-gen" onclick="genFollowup('${id}')">Generate draft</button><span id="fu-status" style="font-size:11px;color:var(--mut)"></span></div>
+    <div class="form-row"><label class="form-label">Draft (edit before sending)</label><textarea class="form-textarea" id="fu-draft" style="min-height:200px;line-height:1.5" placeholder="Click Generate, or write your own…"></textarea></div>
+  `,`<button class="btn btn-ghost btn-sm" onclick="fuCopy()">Copy</button><button class="btn btn-ghost btn-sm" onclick="fuSaveNote('${id}')">Save to notes</button><button class="btn btn-ghost" onclick="closeModal()">Close</button>`);
+}
+async function genFollowup(id){
+  const p=(ls.get('tuf_prospects',[])||[]).find(x=>x.id===id); if(!p) return;
+  const channel=document.getElementById('fu-channel')?.value||'LinkedIn DM';
+  const btn=document.getElementById('fu-gen'), status=document.getElementById('fu-status');
+  if(btn){ btn.disabled=true; btn.textContent='Drafting…'; } if(status) status.textContent="Writing in Danny's voice…";
+  const since=p.lastContact?Math.abs(daysUntil(p.lastContact))+' days ago':'a while ago';
+  const prompt=`You are writing a follow-up message for Danny Wicks, founder of The Ultimate Founder (TUF) — a Boardroom programme for founders. Write a short, warm, commercially-grounded ${channel} message to a warm prospect. Direct, no hard sell, no jargon, no double dashes. Acknowledge the gap since last contact, reference their context, and invite a clear next step.
+
+PROSPECT
+- Name: ${p.name}
+- Company: ${p.co||'unknown'}
+- Pipeline stage: ${p.stage}
+- Temperature: ${p.temp||'Warm'}${p.score?`\n- Lead score: ${p.score}/10`:''}
+- Last contacted: ${since}
+- Planned next action: ${p.nextAction||'reconnect'}
+- Notes: ${p.notes||'(none)'}
+
+Output only the message body, ready to paste (${channel==='Email'?'4-6 short lines':'2-4 short lines'}). Sign off as Danny.`;
+  try{
+    const data=await claudeCall({model:'claude-haiku-4-5-20251001',max_tokens:700,messages:[{role:'user',content:prompt}]});
+    const text=data.content?.[0]?.text||'';
+    const ta=document.getElementById('fu-draft'); if(ta) ta.value=text.trim();
+    if(status) status.textContent='✓ Draft ready — edit, then Copy.';
+  }catch(e){ if(status) status.textContent='Error: '+e.message; }
+  finally{ if(btn){ btn.disabled=false; btn.textContent='Regenerate'; } }
+}
+function fuCopy(){ const ta=document.getElementById('fu-draft'); if(!ta||!ta.value.trim()){ alert('Nothing to copy yet — generate or write a draft first.'); return; } const done=()=>{ const s=document.getElementById('fu-status'); if(s) s.textContent='Copied ✓'; }; if(navigator.clipboard){ navigator.clipboard.writeText(ta.value).then(done).catch(()=>{ta.select();document.execCommand('copy');done();}); } else { ta.select(); document.execCommand('copy'); done(); } }
+function fuSaveNote(id){ const ta=document.getElementById('fu-draft'); const v=(ta?.value||'').trim(); if(!v) return; const list=ls.get('tuf_prospects',[])||[]; const i=list.findIndex(x=>x.id===id); if(i<0) return; const stamp=new Date().toISOString().slice(0,10); list[i].notes=((list[i].notes||'')+`\n[${stamp} follow-up draft]\n`+v).trim(); ls.set('tuf_prospects',list); const s=document.getElementById('fu-status'); if(s) s.textContent='Saved to notes ✓'; }
 
 function renderKanban(){
   const prospects=ls.get('tuf_prospects',[]);
@@ -2704,7 +2825,7 @@ function renderKanban(){
               ${getStaleLabel(p.lastContact)?`<span class="tag tag-r" style="font-size:9px">${getStaleLabel(p.lastContact)}</span>`:''}
             </div>
             ${p.email||p.phone?`<div style="display:flex;gap:6px;margin-top:4px">${p.email?`<a href="mailto:${escHtml(p.email)}" style="font-size:9px;color:var(--blu)" onclick="event.stopPropagation()">✉️</a>`:''} ${p.phone?`<a href="tel:${escHtml(p.phone)}" style="font-size:9px;color:var(--grn)" onclick="event.stopPropagation()">📞</a>`:''}</div>`:''}
-            ${p.nextAction?`<div style="font-size:10px;color:var(--mut);margin-top:4px">${escHtml(p.nextAction)}</div>`:''}
+            ${(p.nextAction||p.nextActionDate)?`<div style="font-size:10px;color:var(--mut);margin-top:4px">${escHtml(p.nextAction||'')}${p.nextActionDate?` <span style="font-weight:700;color:${(p.nextActionDate<new Date().toISOString().slice(0,10)&&p.stage!=='Won'&&p.stage!=='Lost')?'var(--red)':'var(--blu)'}">· ${fmtShort(p.nextActionDate)}</span>`:''}</div>`:''}
             ${p.futureStart?`<div style="font-size:9px;font-weight:700;color:var(--blu);margin-top:3px">Starts ${fmtShort(p.futureStart)}</div>`:''}
           </div>`).join('')}
           ${stage!=='Won'&&stage!=='Lost'?`<button class="btn btn-ghost btn-sm" style="width:100%;margin-top:4px" onclick="addProspectModal('${stage}')">+ Add</button>`:''}
@@ -2799,15 +2920,16 @@ function addProspectModal(stage='Prospect'){
     <div class="form-row"><label class="form-label">Temperature</label><select class="form-select" id="np-temp"><option>Hot</option><option>Warm</option><option>Cold</option></select></div>
     <div class="grid-2">
       <div class="form-row"><label class="form-label">Lead Score (1-10)</label><input class="form-input" type="number" min="1" max="10" id="np-score" placeholder="e.g. 7"></div>
-      <div class="form-row"><label class="form-label">Next Action</label><input class="form-input" id="np-action"></div>
+      <div class="form-row"><label class="form-label">Next Action</label><input class="form-input" id="np-action" placeholder="e.g. Follow-up call"></div>
     </div>
+    <div class="form-row"><label class="form-label">Next Action Date <span style="font-weight:400;color:var(--mut)">(when to chase)</span></label><input class="form-input" type="date" id="np-actiondate"></div>
     <div class="form-row"><label class="form-label">Notes</label><textarea class="form-textarea" id="np-notes"></textarea></div>
   `,`<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-k" onclick="saveProspect()">Save</button>`);
 }
 function saveProspect(){
   const name=document.getElementById('np-name').value.trim();if(!name)return;
   const list=ls.get('tuf_prospects',[]);
-  list.push({id:uid(),name,co:document.getElementById('np-co').value.trim(),email:document.getElementById('np-email')?.value.trim()||'',phone:document.getElementById('np-phone')?.value.trim()||'',stage:document.getElementById('np-stage').value,temp:document.getElementById('np-temp').value,score:parseInt(document.getElementById('np-score').value)||null,nextAction:document.getElementById('np-action').value.trim(),notes:document.getElementById('np-notes').value.trim(),lastContact:new Date().toISOString().slice(0,10)});
+  list.push({id:uid(),name,co:document.getElementById('np-co').value.trim(),email:document.getElementById('np-email')?.value.trim()||'',phone:document.getElementById('np-phone')?.value.trim()||'',stage:document.getElementById('np-stage').value,temp:document.getElementById('np-temp').value,score:parseInt(document.getElementById('np-score').value)||null,nextAction:document.getElementById('np-action').value.trim(),nextActionDate:document.getElementById('np-actiondate')?.value||'',notes:document.getElementById('np-notes').value.trim(),lastContact:new Date().toISOString().slice(0,10)});
   ls.set('tuf_prospects',list);closeModal();renderPipeline();
 }
 function editProspectModal(id){
@@ -2825,7 +2947,10 @@ function editProspectModal(id){
       <div class="form-row"><label class="form-label">Lead Score (1-10)</label><input class="form-input" type="number" min="1" max="10" id="ep-score" value="${p.score||''}"></div>
       <div class="form-row"><label class="form-label">Last Contacted</label><input class="form-input" type="date" id="ep-lastcontact" value="${p.lastContact||''}"></div>
     </div>
-    <div class="form-row"><label class="form-label">Next Action</label><input class="form-input" id="ep-action" value="${escHtml(p.nextAction||'')}"></div>
+    <div class="grid-2">
+      <div class="form-row"><label class="form-label">Next Action</label><input class="form-input" id="ep-action" value="${escHtml(p.nextAction||'')}"></div>
+      <div class="form-row"><label class="form-label">Next Action Date</label><input class="form-input" type="date" id="ep-actiondate" value="${p.nextActionDate||''}"></div>
+    </div>
     <div class="form-row"><label class="form-label">Future start date <span style="font-weight:400;color:var(--mut)">(delayed clients)</span></label><input class="form-input" type="date" id="ep-future" value="${p.futureStart||''}"></div>
     <div class="form-row"><label class="form-label">Notes</label><textarea class="form-textarea" id="ep-notes">${escHtml(p.notes||'')}</textarea></div>
   `,`<button class="btn btn-red btn-sm" onclick="deleteProspect('${id}')">Delete</button><button class="btn btn-ghost btn-sm" onclick="openProfile('${escAttr(p.name)}','${escAttr(p.co)}')">Profile</button>${p.convertedToMemberId?'':`<button class="btn btn-ghost btn-sm" onclick="convertProspectToMember('${id}')">Convert to Member →</button>`}<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-k" onclick="updateProspect('${id}')">Save</button>`);
@@ -2845,7 +2970,7 @@ function convertProspectToMember(id){
 function updateProspect(id){
   const list=ls.get('tuf_prospects',[]);const i=list.findIndex(x=>x.id===id);if(i<0)return;
   const oldStage=list[i].stage;
-  list[i]={...list[i],email:document.getElementById('ep-email')?.value.trim()||list[i].email||'',phone:document.getElementById('ep-phone')?.value.trim()||list[i].phone||'',stage:document.getElementById('ep-stage').value,temp:document.getElementById('ep-temp').value,score:parseInt(document.getElementById('ep-score').value)||list[i].score||null,nextAction:document.getElementById('ep-action').value.trim(),notes:document.getElementById('ep-notes').value.trim(),futureStart:document.getElementById('ep-future')?.value||list[i].futureStart||'',lastContact:document.getElementById('ep-lastcontact').value||new Date().toISOString().slice(0,10)};
+  list[i]={...list[i],email:document.getElementById('ep-email')?.value.trim()||list[i].email||'',phone:document.getElementById('ep-phone')?.value.trim()||list[i].phone||'',stage:document.getElementById('ep-stage').value,temp:document.getElementById('ep-temp').value,score:parseInt(document.getElementById('ep-score').value)||list[i].score||null,nextAction:document.getElementById('ep-action').value.trim(),nextActionDate:document.getElementById('ep-actiondate')?.value||'',notes:document.getElementById('ep-notes').value.trim(),futureStart:document.getElementById('ep-future')?.value||list[i].futureStart||'',lastContact:document.getElementById('ep-lastcontact').value||new Date().toISOString().slice(0,10)};
   if(list[i].stage!==oldStage) addNotif(`${list[i].name} moved to ${list[i].stage}`);
   ls.set('tuf_prospects',list);closeModal();renderPipeline();
 }
@@ -5261,16 +5386,19 @@ function renderBoardroomChecklist(){
   const ownerOpts=`<option value="">Owner…</option>`+TASK_PEOPLE.map(p=>`<option value="${p}">${p}</option>`).join('');
   const rows=list.length?list.map(i=>{
     if(i.id===brEditId){
-      return `<div class="chk-row" style="cursor:default">
+      return `<div class="chk-row" style="cursor:default;flex-wrap:wrap">
         <div class="chk-box"></div>
-        <input class="form-input" id="br-edit-input" value="${escHtml(i.text)}" style="flex:1;font-size:13px" onkeydown="if(event.key==='Enter')saveBoardroomTask('${i.id}');if(event.key==='Escape'){brEditId=null;renderBoardroomChecklist();}">
+        <input class="form-input" id="br-edit-input" value="${escHtml(i.text)}" style="flex:1;min-width:150px;font-size:13px" onkeydown="if(event.key==='Enter')saveBoardroomTask('${i.id}');if(event.key==='Escape'){brEditId=null;renderBoardroomChecklist();}">
+        <input class="form-input" type="date" id="br-edit-date" value="${i.date||''}" style="max-width:150px">
         <button class="btn btn-k btn-sm" onclick="saveBoardroomTask('${i.id}')">Save</button>
         <button class="btn btn-ghost btn-sm" onclick="brEditId=null;renderBoardroomChecklist()">Cancel</button>
       </div>`;
     }
+    const overdue=i.date&&!i.done&&daysUntil(i.date)<0;
     return `<div class="chk-row${i.done?' done':''}">
       <div class="chk-box" onclick="toggleBoardroomTask('${i.id}')">${i.done?'✓':''}</div>
       <span class="chk-text" style="flex:1;font-size:13px" onclick="toggleBoardroomTask('${i.id}')">${escHtml(i.text)}</span>
+      ${i.date?`<span style="font-size:9px;font-weight:700;color:${overdue?'var(--red)':'var(--mut)'}">${fmtShort(i.date)}</span>`:''}
       ${i.owner?`<span class="tag tag-${(i.owner||'').toLowerCase()}" style="font-size:9px">${escHtml(i.owner)}</span>`:''}
       <button class="btn btn-ghost btn-sm" style="padding:2px 8px" title="Edit" onclick="editBoardroomTask('${i.id}')">✏️</button>
       <button class="btn btn-ghost btn-sm" style="padding:2px 8px" title="Delete" onclick="deleteBoardroomTask('${i.id}')">✕</button>
@@ -5279,8 +5407,10 @@ function renderBoardroomChecklist(){
   el.innerHTML=`
     <div class="sec-hdr">Boardroom Event Checklist</div>
     <div class="card">
+      <div style="font-size:11px;color:var(--mut);margin-bottom:10px">Items added here also become dated tasks (section Boardroom) and stay in sync with the Tasks page.</div>
       <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
         <input class="form-input" id="br-new-text" placeholder="Add a task for the Boardroom event…" style="flex:1;min-width:180px" onkeydown="if(event.key==='Enter')addBoardroomTask()">
+        <input class="form-input" type="date" id="br-new-date" style="max-width:150px" title="Due date (optional)">
         <select class="form-select" id="br-new-owner" style="max-width:130px">${ownerOpts}</select>
         <button class="btn btn-k btn-sm" onclick="addBoardroomTask()">+ Add</button>
       </div>
@@ -5292,33 +5422,77 @@ function renderBoardroomChecklist(){
       </div>
     </div>`;
 }
+// Create/update the task linked (by shared id) to a checklist item.
+function brLinkedTask(item, createIfMissing){
+  const tasks=ls.get('tuf_tasks',[]); const i=tasks.findIndex(t=>t.id===item.id);
+  if(i<0){
+    if(!createIfMissing) return;
+    tasks.push({id:item.id,title:item.text,owner:item.owner||'Team',priority:'Medium',dueDate:item.date||'',status:item.done?'Done':'To Do',completedAt:item.done?new Date().toISOString():null,section:'boardroom',notes:'From Boardroom event checklist',createdBy:(typeof CURRENT_USER!=='undefined'?CURRENT_USER:''),createdAt:new Date().toISOString()});
+  } else {
+    tasks[i]={...tasks[i],title:item.text,owner:item.owner||tasks[i].owner,dueDate:item.date||'',status:item.done?'Done':(tasks[i].status==='Done'?'To Do':tasks[i].status),completedAt:item.done?(tasks[i].completedAt||new Date().toISOString()):null};
+  }
+  ls.set('tuf_tasks',tasks); updateTaskBadge();
+}
+function brRemoveLinkedTasks(ids){ const set=new Set(ids); ls.set('tuf_tasks',ls.get('tuf_tasks',[]).filter(t=>!set.has(t.id))); updateTaskBadge(); }
 function addBoardroomTask(){
   const t=(document.getElementById('br-new-text')?.value||'').trim(); if(!t) return;
   const owner=document.getElementById('br-new-owner')?.value||'';
-  const list=ls.get('tuf_boardroom_checklist',[])||[];
-  list.push({id:uid(),text:t,done:false,owner});
-  ls.set('tuf_boardroom_checklist',list); renderBoardroomChecklist();
+  const date=document.getElementById('br-new-date')?.value||'';
+  const item={id:uid(),text:t,done:false,owner,date};
+  const list=ls.get('tuf_boardroom_checklist',[])||[]; list.push(item);
+  ls.set('tuf_boardroom_checklist',list);
+  brLinkedTask(item,true);
+  renderBoardroomChecklist();
 }
 function toggleBoardroomTask(id){
   const list=ls.get('tuf_boardroom_checklist',[])||[]; const i=list.findIndex(x=>x.id===id); if(i<0) return;
-  list[i].done=!list[i].done; ls.set('tuf_boardroom_checklist',list); renderBoardroomChecklist();
+  list[i].done=!list[i].done; ls.set('tuf_boardroom_checklist',list);
+  brLinkedTask(list[i],false);
+  renderBoardroomChecklist();
 }
 function editBoardroomTask(id){ brEditId=id; renderBoardroomChecklist(); const inp=document.getElementById('br-edit-input'); if(inp){ inp.focus(); inp.select(); } }
 function saveBoardroomTask(id){
   const list=ls.get('tuf_boardroom_checklist',[])||[]; const i=list.findIndex(x=>x.id===id); if(i<0) return;
   const v=(document.getElementById('br-edit-input')?.value||'').trim(); if(v) list[i].text=v;
-  brEditId=null; ls.set('tuf_boardroom_checklist',list); renderBoardroomChecklist();
+  const d=document.getElementById('br-edit-date'); if(d) list[i].date=d.value||'';
+  brEditId=null; ls.set('tuf_boardroom_checklist',list);
+  brLinkedTask(list[i],false);
+  renderBoardroomChecklist();
 }
 function deleteBoardroomTask(id){
-  if(!confirm('Delete this item?')) return;
-  ls.set('tuf_boardroom_checklist',(ls.get('tuf_boardroom_checklist',[])||[]).filter(x=>x.id!==id)); renderBoardroomChecklist();
+  if(!confirm('Delete this item? (Removes the linked task too.)')) return;
+  ls.set('tuf_boardroom_checklist',(ls.get('tuf_boardroom_checklist',[])||[]).filter(x=>x.id!==id));
+  brRemoveLinkedTasks([id]);
+  renderBoardroomChecklist();
 }
 function clearBoardroomDone(){
-  ls.set('tuf_boardroom_checklist',(ls.get('tuf_boardroom_checklist',[])||[]).filter(x=>!x.done)); renderBoardroomChecklist();
+  const list=ls.get('tuf_boardroom_checklist',[])||[];
+  const doneIds=list.filter(x=>x.done).map(x=>x.id);
+  ls.set('tuf_boardroom_checklist',list.filter(x=>!x.done));
+  brRemoveLinkedTasks(doneIds);
+  renderBoardroomChecklist();
 }
 function resetBoardroomChecklist(){
-  if(!confirm('Clear the whole checklist for the next event?')) return;
-  ls.set('tuf_boardroom_checklist',[]); brEditId=null; renderBoardroomChecklist();
+  if(!confirm('Clear the whole checklist for the next event? (Removes the linked tasks too.)')) return;
+  const ids=(ls.get('tuf_boardroom_checklist',[])||[]).map(x=>x.id);
+  ls.set('tuf_boardroom_checklist',[]); brEditId=null;
+  brRemoveLinkedTasks(ids);
+  renderBoardroomChecklist();
+}
+// Reverse sync: when a linked task changes on the Tasks side, mirror title/date/done to the checklist.
+function syncBoardroomFromTask(id){
+  const list=ls.get('tuf_boardroom_checklist',[])||[]; const i=list.findIndex(x=>x.id===id); if(i<0) return;
+  const t=ls.get('tuf_tasks',[]).find(x=>x.id===id); if(!t) return;
+  const it=list[i], nowDone=t.status==='Done';
+  if(it.done!==nowDone || it.text!==t.title || (it.date||'')!==(t.dueDate||'') || (it.owner||'')!==(t.owner||'')){
+    it.done=nowDone; it.text=t.title; it.date=t.dueDate||''; it.owner=t.owner||it.owner;
+    ls.set('tuf_boardroom_checklist',list);
+    if(document.getElementById('boardroom-checklist')) renderBoardroomChecklist();
+  }
+}
+function removeBoardroomItemForTask(id){
+  const list=ls.get('tuf_boardroom_checklist',[])||[];
+  if(list.some(x=>x.id===id)){ ls.set('tuf_boardroom_checklist',list.filter(x=>x.id!==id)); if(document.getElementById('boardroom-checklist')) renderBoardroomChecklist(); }
 }
 let brPrevSel='';
 function brPrevOptions(){
