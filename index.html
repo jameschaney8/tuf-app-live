@@ -4594,18 +4594,24 @@ const OKR_MODEL='claude-haiku-4-5-20251001'; // higher rate limits than Sonnet; 
 const OKR_MAX_TOKENS=1500;   // realistic ceiling for one facilitator turn
 const OKR_MIN_GAP=2000;      // minimum ms between sends
 let okrLastSendAt=0;
+let okrSending=false; // re-entrancy guard so one answer never fires two calls
 function okrSleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-// On a rate limit (429), wait (retry-after if provided, else a sane default) and retry once.
+// On a rate limit (429), wait and retry several times with escalating backoff so a
+// transient per-minute limit self-heals (the proxy strips retry-after, so we schedule).
 async function okrCall(payload){
-  try{ return await claudeCall(payload); }
-  catch(e){
-    if(e && e.isRateLimit){
-      const waitMs=Math.min(60000, Math.max(2000, e.retryAfter ? Math.ceil(e.retryAfter*1000) : 8000));
-      const st=document.getElementById('okr-status'); if(st) st.textContent='Busy for a moment, holding…';
-      await okrSleep(waitMs);
-      return await claudeCall(payload);
+  const waits=[6000,15000,30000,50000];
+  for(let attempt=0;;attempt++){
+    try{ return await claudeCall(payload); }
+    catch(e){
+      if(e && e.isRateLimit && attempt<waits.length){
+        const ms=e.retryAfter ? Math.min(60000,Math.ceil(e.retryAfter*1000)) : waits[attempt];
+        const st=document.getElementById('okr-status');
+        if(st) st.textContent='Rate limit reached. Waiting '+Math.round(ms/1000)+'s then retrying ('+(attempt+1)+')…';
+        await okrSleep(ms);
+        continue;
+      }
+      throw e;
     }
-    throw e;
   }
 }
 const OKR_PHASES=[['frame','Frame'],['diverge','Diverge'],['converge','Converge'],['sharpen','Sharpen'],['key_results','Key results'],['stress_test','Stress test'],['owners','Owners'],['synthesise','Synthesise']];
@@ -4673,7 +4679,8 @@ async function okrStartSession(resume){
 }
 function okrSend(){ const ta=document.getElementById('okr-input'); const v=(ta.value||'').trim(); if(!v)return; ta.value=''; okrTurn(v); }
 async function okrTurn(userText){
-  if(!okrSession)return;
+  if(!okrSession || okrSending)return;
+  okrSending=true;
   const btn=document.getElementById('okr-send'), status=document.getElementById('okr-status');
   if(btn){ btn.disabled=true; btn.textContent='Thinking…'; }
   if(status) status.textContent='Facilitator is thinking…';
@@ -4706,8 +4713,12 @@ async function okrTurn(userText){
   }catch(e){
     okrSession.messages.pop(); okrPersist();
     const ta=document.getElementById('okr-input'); if(ta && !ta.value) ta.value=userText;
-    if(status) status.textContent='Error: '+e.message+' — press Send to try again.';
+    const m=(e&&e.message)||'request failed';
+    if(status) status.textContent = (e&&e.isRateLimit)
+      ? 'Still limited after several retries. This is an Anthropic account limit, not the app. Check your Anthropic plan or credit balance, then press Send.'
+      : 'Error: '+m+' — press Send to try again.';
   }finally{
+    okrSending=false;
     if(btn){ btn.disabled=false; btn.textContent='Send →'; }
     const ta=document.getElementById('okr-input'); if(ta) ta.focus();
   }
