@@ -4590,7 +4590,7 @@ function editIndivGoalQ(person){const goals=ls.get('tuf_goals',{});const cur=((g
 function saveIndivGoalQ(person){const goals=ls.get('tuf_goals',{});if(!goals.indivQ)goals.indivQ={};if(!goals.indivQ[goalsQuarter])goals.indivQ[goalsQuarter]={};goals.indivQ[goalsQuarter][person]=document.getElementById('eigq-val').value.trim();ls.set('tuf_goals',goals);closeModal();renderGoals();}
 // ═══ AI-GUIDED OKR SESSION ═══════════════════════════════════════════════════
 const OKR_SYSTEM_PROMPT=(document.getElementById('okr-sys')?.textContent||'').trim();
-const OKR_MODEL='claude-sonnet-4-6';
+const OKR_MODEL='claude-haiku-4-5-20251001'; // higher rate limits than Sonnet; the rest of the app uses this model successfully
 const OKR_MAX_TOKENS=1500;   // realistic ceiling for one facilitator turn
 const OKR_MIN_GAP=2000;      // minimum ms between sends
 let okrLastSendAt=0;
