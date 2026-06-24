@@ -1656,7 +1656,7 @@ function fmtDate(d){return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{d
 // other team member's account can read it. See SUPABASE_SETUP.md: RLS gates by company
 // domain only, not per user, so shared keys would be visible to all teammates.
 function mdKey(){ return 'tuf_myday_'+(CURRENT_EMAIL||CURRENT_USER||'anon'); }
-function mdGet(){ let o=null; try{ const v=localStorage.getItem(mdKey()); o=v?JSON.parse(v):null; }catch(_){ o=null; } o=(o&&typeof o==='object')?o:{}; return { focus:o.focus||'', goals:Array.isArray(o.goals)?o.goals:[], tasks:Array.isArray(o.tasks)?o.tasks:[], updatedAt:o.updatedAt||null }; }
+function mdGet(){ let o=null; try{ const v=localStorage.getItem(mdKey()); o=v?JSON.parse(v):null; }catch(_){ o=null; } o=(o&&typeof o==='object')?o:{}; return { focus:o.focus||'', goals:Array.isArray(o.goals)?o.goals:[], tasks:Array.isArray(o.tasks)?o.tasks:[], modules:Array.isArray(o.modules)?o.modules:mdDefaultModules(), updatedAt:o.updatedAt||null }; }
 function mdSet(o){ o.updatedAt=new Date().toISOString(); localStorage.setItem(mdKey(),JSON.stringify(o)); } // local only — no syncSB by design
 const MYDAY_NUDGES=[
   'Pick the one move that makes everything else easier, then do it first.',
@@ -1737,6 +1737,7 @@ function renderMyDay(){
           <span class="tag ${e.du===0?'tag-r':e.du<=2?'tag-a':'tag-g'}" style="font-size:10px">${e.du===0?'Today':e.du===1?'Tomorrow':'in '+e.du+' days'}</span>
         </div>`).join(''):'<div class="empty" style="padding:18px"><div class="ico">📅</div>Nothing in the next 7 days.</div>'}
     </div>
+    ${mdModulesHtml(d)}
   `;
 }
 function mdSaveFocus(){ const inp=document.getElementById('md-focus'); if(!inp)return; const d=mdGet(); d.focus=inp.value.trim(); mdSet(d); mdFocusDirty=false; const n=document.getElementById('md-focus-note'); if(n){ n.textContent='Saved'; setTimeout(()=>{ const x=document.getElementById('md-focus-note'); if(x)x.textContent=''; },1500); } }
@@ -1745,6 +1746,77 @@ function mdToggle(kind,id){ const d=mdGet(); const it=d[kind].find(x=>x.id===id)
 function mdEdit(kind,id){ const d=mdGet(); const it=d[kind].find(x=>x.id===id); if(!it)return; const v=prompt('Edit:',it.text); if(v===null)return; const t=v.trim(); if(!t)return; it.text=t; mdSet(d); renderMyDay(); }
 function mdDelete(kind,id){ const d=mdGet(); d[kind]=d[kind].filter(x=>x.id!==id); mdSet(d); renderMyDay(); }
 function mdClearDone(kind){ if(!confirm('Clear completed items from this list?'))return; const d=mdGet(); d[kind]=d[kind].filter(x=>!x.done); mdSet(d); renderMyDay(); }
+
+// ── My Day role sections: each person pins the shared sections they own ──
+// Pinned-section choice is stored per user in the local My Day object (still local only).
+const MYDAY_MODULES=[
+  {id:'podcast',label:'Podcast checklist',page:'podcast'},
+  {id:'boardroom',label:'Boardroom checklist',page:'boardroom'},
+  {id:'padel',label:'Padel event',page:'padel'},
+];
+const MYDAY_MODULE_DEFAULTS={ James:['podcast'], Joe:['boardroom'], Jasper:['padel'] };
+function mdDefaultModules(){ return (MYDAY_MODULE_DEFAULTS[CURRENT_USER]||[]).slice(); }
+function mdAddModule(){ const sel=document.getElementById('md-add-module'); if(!sel||!sel.value)return; const d=mdGet(); if(!d.modules.includes(sel.value)) d.modules.push(sel.value); mdSet(d); renderMyDay(); }
+function mdRemoveModule(id){ const d=mdGet(); d.modules=d.modules.filter(m=>m!==id); mdSet(d); renderMyDay(); }
+function mdModToggle(kind,id){
+  if(kind==='podcast'){ const c=podChkGet(); if(c.done[id]) delete c.done[id]; else c.done[id]=true; podChkSet(c); }
+  else if(kind==='boardroom'){ toggleBoardroomTask(id); }
+  renderMyDay();
+}
+function mdModPodcastBody(){
+  const c=podChkGet(); const all=[...(c.before||[]),...(c.after||[])]; const done=all.filter(it=>c.done[it.id]).length;
+  return `${podChkBar(done,all.length)}
+    <div style="font-size:11px;color:var(--mut);margin:6px 0 10px">${done}/${all.length} done${c.updatedBy?' · last by '+escHtml(c.updatedBy):''}</div>
+    ${[['before','Before recording'],['after','After recording']].map(([k,t])=>{ const items=c[k]||[]; return `<div style="font-size:10px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin:8px 0 4px">${t}</div>`+items.map(it=>`<div class="chk-row ${c.done[it.id]?'done':''}"><div class="chk-box" onclick="mdModToggle('podcast','${it.id}')">${c.done[it.id]?'✓':''}</div><span class="chk-text" style="flex:1;cursor:pointer" onclick="mdModToggle('podcast','${it.id}')">${escHtml(it.text)}</span></div>`).join(''); }).join('')}`;
+}
+function mdModBoardroomBody(){
+  const list=ls.get('tuf_boardroom_checklist',[])||[];
+  if(!list.length) return '<div class="empty" style="padding:14px"><div class="ico">✶</div>No boardroom checklist items yet. Open Boardroom to add them.</div>';
+  const done=list.filter(i=>i.done).length;
+  return `${podChkBar(done,list.length)}
+    <div style="font-size:11px;color:var(--mut);margin:6px 0 10px">${done}/${list.length} done</div>
+    ${list.map(i=>`<div class="chk-row ${i.done?'done':''}"><div class="chk-box" onclick="mdModToggle('boardroom','${i.id}')">${i.done?'✓':''}</div><span class="chk-text" style="flex:1;cursor:pointer" onclick="mdModToggle('boardroom','${i.id}')">${escHtml(i.text)}${(i.owner||i.date)?` <span style="color:var(--mut);font-size:10px">${escHtml(i.owner||'')}${i.date?' · '+escHtml(fmtShort(i.date)):''}</span>`:''}</span></div>`).join('')}`;
+}
+function mdModPadelBody(){
+  const leads=(ls.get('tuf_event_leads',[])||[]).filter(l=>(l.event||'').toLowerCase().indexOf('padel')>=0);
+  const confirmed=leads.filter(l=>l.attendance==='Confirmed'||l.attendance==='Attended').length;
+  const invited=leads.filter(l=>!l.attendance||l.attendance==='Invited').length;
+  const snap=ls.get('tuf_padel_stripe',null)||(typeof PADEL_STRIPE_SNAPSHOT!=='undefined'?PADEL_STRIPE_SNAPSHOT:{payments:[]});
+  const hidden=ls.get('tuf_padel_hidden',[])||[];
+  const paid=(snap.payments||[]).filter(p=>!hidden.includes(p.charge||((p.created||0)+'_'+(p.amount||0)))).length;
+  return `<div class="grid-3" style="gap:8px">
+    <div class="stat g"><div class="n">${confirmed}</div><div class="l">Confirmed</div></div>
+    <div class="stat ${invited?'a':''}"><div class="n">${invited}</div><div class="l">Not confirmed</div></div>
+    <div class="stat y"><div class="n">${paid}</div><div class="l">Tickets paid</div></div>
+  </div>`;
+}
+function mdModuleCard(id){
+  const meta=MYDAY_MODULES.find(m=>m.id===id); if(!meta) return '';
+  const body=id==='podcast'?mdModPodcastBody():id==='boardroom'?mdModBoardroomBody():id==='padel'?mdModPadelBody():'';
+  return `<div class="card" style="margin-top:14px;border-left:4px solid var(--k)">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <div class="card-title" style="margin:0">${escHtml(meta.label)}</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="nav('${meta.page}',document.querySelector('[data-page=${meta.page}]'))">Open</button>
+        <button class="btn btn-ghost btn-sm" style="padding:4px 8px" title="Remove from My Day" onclick="mdRemoveModule('${id}')">✕</button>
+      </div>
+    </div>
+    ${body}
+  </div>`;
+}
+function mdModulesHtml(d){
+  const mods=(d.modules||[]).filter(id=>MYDAY_MODULES.some(m=>m.id===id));
+  const addable=MYDAY_MODULES.filter(m=>!mods.includes(m.id));
+  const cards=mods.map(mdModuleCard).join('');
+  const adder=addable.length?`<div class="card" style="margin-top:14px;background:var(--bg)">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--mut)">Add a section you own:</span>
+        <select id="md-add-module" class="form-select" style="font-size:12px;max-width:220px">${addable.map(m=>`<option value="${m.id}">${escHtml(m.label)}</option>`).join('')}</select>
+        <button class="btn btn-k btn-sm" onclick="mdAddModule()">Add section</button>
+      </div>
+    </div>`:'';
+  return `<div class="sec-hdr" style="margin-top:18px">My sections</div>${cards||'<div class="empty" style="padding:14px"><div class="ico">➕</div>No sections pinned yet. Add the area you own below.</div>'}${adder}`;
+}
 function fmtShort(d){return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
 function weekKey(){const d=new Date();const m=new Date(d);m.setDate(d.getDate()-d.getDay()+1);return m.toISOString().slice(0,10);}
 function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
