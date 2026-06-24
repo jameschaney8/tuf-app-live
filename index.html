@@ -357,6 +357,13 @@ details>summary::-webkit-details-marker{display:none}
 #page-content .chub-row{display:flex;align-items:center;gap:8px}
 #page-content a.chub-link{color:var(--y);text-decoration:none;cursor:pointer}
 @media(max-width:768px){#page-content{margin:-12px;padding:12px}#page-content .chub-statbar{grid-template-columns:1fr 1fr}#page-content .chub-grid7{grid-template-columns:1fr}}
+/* Voice dictation mic button (Web Speech API) */
+.mic-btn{background:transparent;border:1px solid var(--bdr);border-radius:8px;cursor:pointer;font-size:14px;line-height:1;padding:6px 9px;color:inherit;flex-shrink:0;font-family:inherit}
+.mic-btn:hover{border-color:var(--k)}
+.mic-btn.mic-on{background:var(--red);border-color:var(--red);color:#fff;animation:micpulse 1s infinite}
+@keyframes micpulse{0%,100%{opacity:1}50%{opacity:.55}}
+#okr-session .mic-btn,#page-content .mic-btn{border-color:#3a3a42;color:#fff}
+#okr-session .mic-btn:hover,#page-content .mic-btn:hover{border-color:var(--y)}
 </style>
 </head>
 <body>
@@ -620,7 +627,7 @@ details>summary::-webkit-details-marker{display:none}
               <input class="form-input" id="tr-title" placeholder="e.g. Morning standup 4 June">
             </div>
             <div class="form-row">
-              <label class="form-label">Notes / Transcript</label>
+              <label class="form-label">Notes / Transcript <button type="button" class="mic-btn" title="Speak" onclick="dictate('tr-text',this)" style="font-size:11px;padding:3px 8px;margin-left:6px;vertical-align:middle">🎤 Speak</button></label>
               <textarea class="form-textarea" id="tr-text" style="min-height:280px;font-size:12px" placeholder="Paste transcript or meeting notes here…&#10;&#10;Examples of things Claude will pick up:&#10;• 'Danny to follow up with Ben Coomer this week'&#10;• 'Joe — we need the onboarding doc before the 20th'&#10;• 'Action: James orders Jasper's laptop today'&#10;• Any decision, commitment or action from the conversation"></textarea>
             </div>
             <button class="btn btn-k" id="tr-btn" onclick="extractTasks()" style="width:100%;padding:12px;font-size:14px;font-family:'Montserrat',sans-serif">
@@ -822,6 +829,7 @@ details>summary::-webkit-details-marker{display:none}
     </div>
     <div class="hq-input-row">
       <textarea id="hq-input" placeholder="Ask anything, or ask me to draft something…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();hqSend();}"></textarea>
+      <button type="button" class="mic-btn" title="Speak" onclick="dictate('hq-input',this)" style="margin-right:6px">🎤</button>
       <button class="hq-send" id="hq-send" onclick="hqSend()">Send</button>
     </div>
   </div>
@@ -852,7 +860,7 @@ details>summary::-webkit-details-marker{display:none}
         <textarea id="okr-input" placeholder="Type the room's answer, then Send…" onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();okrSend();}"></textarea>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
           <span style="font-size:11px;color:#5f5f68">Cmd/Ctrl + Enter to send</span>
-          <button class="btn btn-k" id="okr-send" onclick="okrSend()">Send →</button>
+          <span style="display:flex;gap:6px;align-items:center"><button type="button" class="mic-btn" title="Speak the answer" onclick="dictate('okr-input',this)">🎤</button><button class="btn btn-k" id="okr-send" onclick="okrSend()">Send →</button></span>
         </div>
       </div>
     </div>
@@ -1311,6 +1319,7 @@ let CURRENT_USER = '';
 let CURRENT_EMAIL = ''; // stable per-user id used to scope the private My Day store (local only)
 function initApp(user){
   CURRENT_USER = user;
+  if(!micSupported()) document.querySelectorAll('.mic-btn').forEach(b=>{ b.style.display='none'; });
   CURRENT_EMAIL = (ls.get('tuf_team_emails',{})[user]||'').toLowerCase();
   document.getElementById('app').classList.add('show');
   const _hqf=document.getElementById('hq-fab'); if(_hqf) _hqf.style.display='flex';
@@ -1726,7 +1735,7 @@ function mdListCard(kind,title,items,doneCount){
     ${rows}
     <div style="display:flex;gap:6px;margin-top:10px">
       <input id="md-add-${kind}" class="form-input" placeholder="Add a ${kind==='goals'?'goal':'task'}…" style="flex:1;font-size:13px" onkeydown="if(event.key==='Enter')mdAdd('${kind}')">
-      <button class="btn btn-k btn-sm" onclick="mdAdd('${kind}')">Add</button>
+      ${micBtnHtml('md-add-'+kind)}<button class="btn btn-k btn-sm" onclick="mdAdd('${kind}')">Add</button>
     </div>
     ${doneCount?`<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="mdClearDone('${kind}')">Clear completed</button>`:''}
   </div>`;
@@ -1753,7 +1762,7 @@ function renderMyDay(){
       <input id="md-focus" class="form-input" value="${escHtml(d.focus||'')}" placeholder="Name the single most important thing…" oninput="mdFocusDirty=true" onchange="mdSaveFocus()" style="font-size:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
         <span id="md-focus-note" style="font-size:11px;color:var(--grn)"></span>
-        <button class="btn btn-k btn-sm" onclick="mdSaveFocus()">Save focus</button>
+        <span style="display:flex;gap:6px">${micBtnHtml('md-focus')}<button class="btn btn-k btn-sm" onclick="mdSaveFocus()">Save focus</button></span>
       </div>
     </div>
     ${mdListCard('goals','Goals for today',d.goals,goalsDone)}
@@ -1889,6 +1898,32 @@ function getApiKey(){
 // All Claude calls go through the Supabase "claude-proxy" edge function so the
 // API key never lives in the browser. Returns the Anthropic response JSON
 // ({ content:[{text}], stop_reason, ... }) exactly as the direct API did.
+// ── Voice dictation (Web Speech API; on-device, no key, no cost) ──
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+let micRec=null, micBtn=null, micTarget=null, micBase='';
+function micSupported(){ return !!SpeechRec; }
+function micBtnHtml(targetId, cls){ if(!micSupported()) return ''; return `<button type="button" class="mic-btn ${cls||''}" title="Speak instead of typing" onclick="dictate('${targetId}',this)">🎤</button>`; }
+function micCleanup(){ if(micBtn) micBtn.classList.remove('mic-on'); micRec=null; micBtn=null; micTarget=null; }
+function dictate(targetId, btn){
+  if(!micSupported()){ alert('Voice input is not supported in this browser. Try Chrome, Edge or Safari.'); return; }
+  if(micRec){ try{ micRec.stop(); }catch(_){} return; } // tap again to stop
+  const t=document.getElementById(targetId); if(!t) return;
+  micTarget=t; micBtn=btn||null; micBase=t.value||'';
+  const rec=new SpeechRec(); micRec=rec;
+  rec.lang='en-GB'; rec.interimResults=true; rec.continuous=true;
+  if(micBtn) micBtn.classList.add('mic-on');
+  let finalText='';
+  rec.onresult=(e)=>{
+    let interim='';
+    for(let i=e.resultIndex;i<e.results.length;i++){ const r=e.results[i]; if(r.isFinal) finalText+=r[0].transcript; else interim+=r[0].transcript; }
+    const sep=(micBase && !/\s$/.test(micBase))?' ':'';
+    micTarget.value=micBase+sep+finalText+interim;
+    micTarget.dispatchEvent(new Event('input',{bubbles:true}));
+  };
+  rec.onerror=(e)=>{ const err=e&&e.error; micCleanup(); if(err==='not-allowed'||err==='service-not-allowed') alert('Microphone access is blocked. Allow the mic for this site in your browser settings, then try again.'); };
+  rec.onend=()=>{ if(micTarget) micTarget.dispatchEvent(new Event('change',{bubbles:true})); micCleanup(); };
+  try{ rec.start(); }catch(_){ micCleanup(); }
+}
 async function claudeCall(payload){
   if(!sb) throw new Error('Not connected — please sign in again.');
   const { data, error } = await sb.functions.invoke('claude-proxy', { body: payload });
@@ -4261,7 +4296,7 @@ function chubBankModal(id){
       <div class="form-row"><label class="form-label">Type</label><select class="form-select" id="bk-type">${types.map(x=>`<option${x===b.type?' selected':''}>${escHtml(x)}</option>`).join('')}</select></div>
     </div>
     <div class="form-row"><label class="form-label">Status</label><select class="form-select" id="bk-status">${BANK_STATUSES.map(s=>`<option${s===b.status?' selected':''}>${s}</option>`).join('')}</select></div>
-    <div class="form-row"><label class="form-label">Notes</label><textarea class="form-textarea" id="bk-notes" style="min-height:80px">${escHtml(b.desc||b.notes||'')}</textarea></div>
+    <div class="form-row"><label class="form-label">Notes ${micBtnHtml('bk-notes')}</label><textarea class="form-textarea" id="bk-notes" style="min-height:80px">${escHtml(b.desc||b.notes||'')}</textarea></div>
   `,`${id?`<button class="btn btn-red btn-sm" onclick="chubBankDelete('${id}')">Delete</button>`:''}<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-k" onclick="chubBankSave('${id||''}')">Save</button>`);
 }
 function chubBankReadForm(){ const platforms=[...document.querySelectorAll('.bk-plat:checked')].map(c=>c.value); return {title:document.getElementById('bk-title').value.trim(),platforms,platform:platforms[0]||'',pillar:document.getElementById('bk-pillar').value,type:document.getElementById('bk-type').value,status:document.getElementById('bk-status').value,desc:document.getElementById('bk-notes').value.trim()}; }
@@ -4441,7 +4476,7 @@ function chubPostFormHtml(p){
       <div class="form-row"><label class="form-label">Status</label><select class="form-select" id="cp-status">${CONTENT_STATUSES.map(s=>{const lab=s==='Posted'?'Published':s;return `<option${lab===stDisp?' selected':''}>${lab}</option>`;}).join('')}</select></div>
     </div>
     <div class="form-row"><label class="form-label">Live link (once published)</label><input class="form-input" id="cp-link" value="${escHtml((p&&p.link)||'')}" placeholder="https://"></div>
-    <div class="form-row"><label class="form-label">Notes or draft copy</label><textarea class="form-textarea" id="cp-notes" style="min-height:80px">${escHtml((p&&p.notes)||'')}</textarea></div>`;
+    <div class="form-row"><label class="form-label">Notes or draft copy ${micBtnHtml('cp-notes')}</label><textarea class="form-textarea" id="cp-notes" style="min-height:80px">${escHtml((p&&p.notes)||'')}</textarea></div>`;
 }
 function chubReadForm(){ const platforms=[...document.querySelectorAll('.cp-plat:checked')].map(c=>c.value); const stDisp=document.getElementById('cp-status').value; return {title:document.getElementById('cp-title').value.trim(),platforms,platform:platforms[0]||'',pillar:document.getElementById('cp-pillar').value,type:document.getElementById('cp-type').value,date:document.getElementById('cp-date').value||'',time:document.getElementById('cp-time').value||'',owner:document.getElementById('cp-owner').value,status:stDisp==='Published'?'Posted':stDisp,link:document.getElementById('cp-link').value.trim(),notes:document.getElementById('cp-notes').value.trim()}; }
 function chubAddPost(prefill){ const p=(typeof prefill==='string')?{date:prefill}:{}; showModal('Add content post',chubPostFormHtml(p),`<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-k" onclick="chubSavePost()">Save</button>`); }
