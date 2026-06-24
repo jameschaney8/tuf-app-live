@@ -18,29 +18,33 @@
 <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{color-scheme:light;
-  --k:#0A0A0B;--y:#FBF000;--w:#fff;--bg:#F5F6F8;--bg-2:#EEF0F4;
+  --k:#0A0A0B;--y:#FBF000;--w:#fff;--bg:#F5F4F1;--bg-2:#ECEAE4;
   --red:#C0392B;--amb:#E67E22;--grn:#27AE60;--blu:#2471A3;--pur:#8E44AD;
   --rbg:#FDECEA;--abg:#FEF9EC;--gbg:#E8F5E9;--bbg:#EBF5FB;--pbg:#F5EEF8;
-  --txt:#16181D;--mut:#6B7280;--bdr:#E7E9EE;--bdr-2:#EFF1F4;--card:#fff;
+  --txt:#141519;--mut:#6E6E78;--bdr:#E6E2D9;--bdr-2:#EEEBE3;--card:#fff;
   --side:#0C0D10;--side-w:230px;
   --danny:#8E44AD;--joe:#2471A3;--jasper:#16A085;--james:#E67E22;
+  --font-display:'Fraunces',Georgia,serif;
+  --ring:0 0 0 3px rgba(251,240,0,.22);
   /* elevation */
-  --sh-sm:0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.06);
-  --sh-md:0 2px 6px rgba(16,24,40,.06),0 6px 16px rgba(16,24,40,.07);
-  --sh-lg:0 8px 24px rgba(16,24,40,.10),0 18px 48px rgba(16,24,40,.14);
+  --sh-sm:0 1px 2px rgba(28,22,10,.05),0 1px 1px rgba(28,22,10,.04);
+  --sh-md:0 2px 8px rgba(28,22,10,.05),0 10px 26px rgba(28,22,10,.07);
+  --sh-lg:0 12px 30px rgba(28,22,10,.10),0 28px 64px rgba(28,22,10,.13);
   /* radius */
-  --r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;
+  --r-sm:8px;--r-md:13px;--r-lg:16px;--r-xl:20px;
   /* spacing */
   --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:24px;--sp-6:32px}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--txt);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+::selection{background:var(--y);color:var(--k)}
+.page::-webkit-scrollbar{width:10px;height:10px}.page::-webkit-scrollbar-thumb{background:#D9D5CB;border-radius:8px;border:3px solid var(--bg)}.page::-webkit-scrollbar-thumb:hover{background:#C7C2B5}.page{scrollbar-width:thin;scrollbar-color:#D9D5CB transparent}
 /* ── AUTH ── */
 #auth{position:fixed;inset:0;background:radial-gradient(1200px 600px at 50% -10%,#1a1b20 0%,#0A0A0B 55%,#000 100%);display:flex;align-items:center;justify-content:center;z-index:1000}
 .auth-box{background:linear-gradient(180deg,#161719 0%,#0E0F11 100%);border:1px solid rgba(255,255,255,.08);border-radius:var(--r-lg);padding:44px 40px;width:360px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.6),0 0 0 1px rgba(251,240,0,.04)}
-.auth-logo{font-family:'Montserrat',sans-serif;font-size:21px;font-weight:800;color:var(--y);margin-bottom:6px;letter-spacing:.5px}
+.auth-logo{font-family:var(--font-display);font-size:30px;font-weight:600;color:var(--y);margin-bottom:6px;letter-spacing:.5px}
 .auth-sub{color:#8A8D94;font-size:12px;margin-bottom:30px;text-transform:uppercase;letter-spacing:1.5px;font-weight:600}
 .auth-input{width:100%;background:#202125;border:1px solid rgba(255,255,255,.10);border-radius:var(--r-sm);padding:13px 16px;font-size:14px;color:var(--w);margin-bottom:12px;font-family:inherit;transition:border-color .15s,box-shadow .15s}
 .auth-input::placeholder{color:#6B6E76}
@@ -55,7 +59,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--txt);f
 /* ── USER SELECTOR ── */
 #user-sel{position:fixed;inset:0;background:radial-gradient(1200px 600px at 50% -10%,#1a1b20 0%,#0A0A0B 55%,#000 100%);display:flex;align-items:center;justify-content:center;z-index:999}
 .usel-box{background:linear-gradient(180deg,#161719 0%,#0E0F11 100%);border:1px solid rgba(255,255,255,.08);border-radius:var(--r-lg);padding:40px;width:420px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.6)}
-.usel-title{font-family:'Montserrat',sans-serif;font-size:19px;font-weight:800;color:var(--y);margin-bottom:6px}
+.usel-title{font-family:var(--font-display);font-size:24px;font-weight:600;color:var(--y);margin-bottom:6px}
 .usel-sub{color:#8A8D94;font-size:12px;margin-bottom:26px}
 .usel-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .usel-btn{background:#1B1C1F;border:1px solid rgba(255,255,255,.08);border-radius:var(--r-md);padding:18px 16px;cursor:pointer;transition:transform .12s,border-color .15s,background .15s,box-shadow .15s;color:var(--w);font-size:13px;font-weight:700;position:relative}
@@ -92,34 +96,34 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--txt);f
 /* ── MAIN CONTENT ── */
 #main{flex:1;overflow:hidden;display:flex;flex-direction:column}
 .topbar{background:rgba(255,255,255,.85);backdrop-filter:saturate(160%) blur(8px);border-bottom:1px solid var(--bdr-2);padding:0 24px;height:52px;display:flex;align-items:center;gap:12px;flex-shrink:0;box-shadow:0 1px 0 rgba(16,24,40,.02)}
-.topbar-title{font-family:'Montserrat',sans-serif;font-size:16px;font-weight:800;letter-spacing:-.2px}
+.topbar-title{font-family:var(--font-display);font-size:18px;font-weight:600;letter-spacing:-.2px}
 .topbar-sub{font-size:11px;color:var(--mut)}
 .topbar-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
-.page{display:none;flex:1;overflow-y:auto;padding:24px 28px}
+.page{display:none;flex:1;overflow-y:auto;padding:26px 32px}
 .page.active{display:block}
 /* ── SHARED COMPONENTS ── */
 .sec{margin-bottom:28px}
 .sec-hdr{font-family:'Montserrat',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--txt);margin-bottom:14px;display:flex;align-items:center;gap:12px}
 .sec-hdr::before{content:'';width:4px;height:15px;background:var(--y);border-radius:3px;flex-shrink:0}
 .sec-hdr::after{content:'';flex:1;height:1px;background:var(--bdr)}
-.card{background:var(--card);border:1px solid var(--bdr-2);border-radius:var(--r-md);padding:18px 20px;margin-bottom:12px;box-shadow:var(--sh-sm)}
-.card-title{font-family:'Montserrat',sans-serif;font-size:14px;font-weight:700;margin-bottom:10px}
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:var(--r-md);padding:20px 22px;margin-bottom:14px;box-shadow:var(--sh-sm)}
+.card-title{font-family:var(--font-display);font-size:16px;font-weight:600;margin-bottom:11px;letter-spacing:-.1px}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
 .grid-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px}
 @media(max-width:900px){.grid-3,.grid-4{grid-template-columns:1fr 1fr}.grid-2{grid-template-columns:1fr}}
 /* stat boxes */
-.stat{background:var(--card);border:1px solid var(--bdr-2);border-radius:var(--r-md);padding:16px 18px;text-align:center;box-shadow:var(--sh-sm);transition:box-shadow .15s,transform .15s}
-.stat:hover{box-shadow:var(--sh-md);transform:translateY(-1px)}
-.stat .n{font-family:'Montserrat',sans-serif;font-size:30px;font-weight:700;line-height:1;letter-spacing:-.5px}
+.stat{background:var(--card);border:1px solid var(--bdr);border-radius:var(--r-md);padding:18px;text-align:center;box-shadow:var(--sh-sm);transition:box-shadow .18s,transform .18s,border-color .18s}
+.stat:hover{box-shadow:var(--sh-md);transform:translateY(-2px)}
+.stat .n{font-family:var(--font-display);font-size:33px;font-weight:600;line-height:1;letter-spacing:-.5px}
 .stat .l{font-size:10px;color:var(--mut);margin-top:5px;text-transform:uppercase;letter-spacing:.6px;font-weight:600}
 .stat.r .n{color:var(--red)}.stat.a .n{color:var(--amb)}.stat.g .n{color:var(--grn)}.stat.y{border:1px solid var(--y);box-shadow:0 0 0 3px rgba(251,240,0,.18),var(--sh-sm)}
 /* buttons */
 .btn{padding:8px 16px;border-radius:var(--r-sm);border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;transition:transform .1s,box-shadow .15s,background .15s;letter-spacing:.2px}
 .btn:active{transform:translateY(1px)}
 .btn:focus-visible{outline:2px solid var(--y);outline-offset:2px}
-.btn-k{background:var(--k);color:var(--w);box-shadow:var(--sh-sm)}.btn-k:hover{background:#26262b;box-shadow:var(--sh-md)}
-.btn-y{background:var(--y);color:var(--k);box-shadow:0 1px 3px rgba(251,240,0,.5)}.btn-y:hover{background:#ECDF00;box-shadow:0 3px 10px rgba(251,240,0,.55)}
+.btn-k{background:linear-gradient(180deg,#1b1c20,#0b0c0f);color:var(--w);box-shadow:var(--sh-sm)}.btn-k:hover{background:linear-gradient(180deg,#27282d,#141519);box-shadow:var(--sh-md);transform:translateY(-1px)}
+.btn-y{background:var(--y);color:var(--k);box-shadow:0 1px 3px rgba(251,240,0,.5)}.btn-y:hover{background:#ECDF00;box-shadow:0 4px 14px rgba(251,240,0,.55);transform:translateY(-1px)}
 .btn-ghost{background:var(--w);border:1px solid var(--bdr);color:var(--txt);box-shadow:var(--sh-sm)}.btn-ghost:hover{background:var(--bg-2);border-color:var(--mut)}
 .btn-red{background:var(--rbg);color:var(--red);border:1px solid #f3c4c0}.btn-red:hover{background:#f9d3cf}
 .btn-sm{padding:5px 11px;font-size:11px}
@@ -138,14 +142,14 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--txt);f
 @keyframes modalfade{from{opacity:0}to{opacity:1}}
 .modal{background:var(--w);border-radius:var(--r-lg);padding:26px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:var(--sh-lg);animation:modalpop .2s cubic-bezier(.2,.8,.3,1)}
 @keyframes modalpop{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
-.modal-title{font-family:'Montserrat',sans-serif;font-size:17px;font-weight:800;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;letter-spacing:-.2px}
+.modal-title{font-family:var(--font-display);font-size:19px;font-weight:600;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;letter-spacing:-.2px}
 .modal-close{background:var(--bg);border:none;font-size:16px;cursor:pointer;color:var(--mut);width:30px;height:30px;border-radius:8px;line-height:1;transition:background .15s,color .15s}
 .modal-close:hover{color:var(--txt);background:var(--bg-2)}
 .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:16px;border-top:1px solid var(--bdr-2)}
 /* tables */
 .tbl{width:100%;border-collapse:collapse;font-size:13px}
-.tbl th{background:var(--bg);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);padding:11px 14px;text-align:left;border-bottom:1px solid var(--bdr)}
-.tbl td{padding:12px 14px;border-bottom:1px solid var(--bdr-2);vertical-align:middle}
+.tbl th{background:var(--bg);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);padding:12px 16px;text-align:left;border-bottom:1px solid var(--bdr)}
+.tbl td{padding:13px 16px;border-bottom:1px solid var(--bdr-2);vertical-align:middle}
 .tbl tr:hover td{background:var(--bg)}
 .tbl tr:last-child td{border-bottom:none}
 /* checklist */
@@ -212,7 +216,7 @@ details>summary::-webkit-details-marker{display:none}
 @media(max-width:900px){.ns-row{grid-template-columns:1fr 1fr 1fr}}@media(max-width:600px){.ns-row{grid-template-columns:1fr 1fr}}
 .ns-box{background:var(--card);border:1px solid var(--bdr-2);border-radius:var(--r-md);padding:16px;text-align:left;cursor:pointer;transition:box-shadow .15s,transform .15s,border-color .15s;box-shadow:var(--sh-sm);position:relative;overflow:hidden}
 .ns-box:hover{box-shadow:var(--sh-md);transform:translateY(-2px)}.ns-box.key{border-color:transparent;box-shadow:0 0 0 2px var(--y),var(--sh-sm)}.ns-box.key:hover{box-shadow:0 0 0 2px var(--y),var(--sh-md)}
-.ns-n{font-family:'Montserrat',sans-serif;font-size:28px;font-weight:700;margin:6px 0 2px;letter-spacing:-.5px;line-height:1.1}
+.ns-n{font-family:var(--font-display);font-size:31px;font-weight:600;margin:6px 0 2px;letter-spacing:-.5px;line-height:1.05}
 .ns-l{font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700}
 .ns-t{font-size:10px;color:var(--mut);margin-top:3px}
 .ns-bar{height:6px;background:var(--bg-2);border-radius:20px;overflow:hidden;margin-top:9px}
@@ -249,7 +253,7 @@ details>summary::-webkit-details-marker{display:none}
 #hq-panel{position:absolute;top:0;right:0;height:100%;width:400px;max-width:92vw;background:var(--card);box-shadow:-6px 0 24px rgba(0,0,0,.18);display:flex;flex-direction:column;animation:hqslide .18s ease}
 @keyframes hqslide{from{transform:translateX(100%)}to{transform:translateX(0)}}
 .hq-head{background:var(--k);color:var(--w);padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
-.hq-head h3{font-family:Georgia,serif;font-size:17px;font-weight:700;letter-spacing:.3px}
+.hq-head h3{font-family:var(--font-display);font-size:18px;font-weight:600;letter-spacing:.3px}
 .hq-head .hq-sub{font-size:11px;color:#bbb;margin-top:2px}
 .hq-head .hq-x{background:transparent;border:none;color:var(--w);font-size:20px;cursor:pointer;line-height:1}
 .hq-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
@@ -320,12 +324,12 @@ details>summary::-webkit-details-marker{display:none}
 .okr-conf-lo{color:var(--red);font-size:11px}
 /* CONTENT HUB (dark mission control). All rules scoped to #page-content so nothing leaks. */
 #page-content{background:#0A0A0A;color:#fff;min-height:100%;font-family:Arial,Helvetica,sans-serif;margin:-24px -28px;padding:24px 28px}
-#page-content .chub-h{font-family:Georgia,'Times New Roman',serif}
-#page-content .chub-title{font-family:Georgia,serif;font-size:22px;font-weight:700;margin:0 0 2px}
+#page-content .chub-h{font-family:var(--font-display)}
+#page-content .chub-title{font-family:var(--font-display);font-size:24px;font-weight:600;margin:0 0 2px}
 #page-content .chub-sub{color:#8a8a8a;font-size:12px;margin-bottom:16px}
 #page-content .chub-statbar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
 #page-content .chub-stat{background:#141414;border:1px solid #262626;border-radius:14px;padding:14px 16px}
-#page-content .chub-stat .n{font-family:Georgia,serif;font-size:30px;font-weight:700;line-height:1;color:#fff}
+#page-content .chub-stat .n{font-family:var(--font-display);font-size:32px;font-weight:600;line-height:1;color:#fff}
 #page-content .chub-stat .n.warn{color:#FF5252}#page-content .chub-stat .n.ok{color:#4CAF50}#page-content .chub-stat .n.acc{color:var(--y)}
 #page-content .chub-stat .l{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:#8a8a8a;margin-top:6px}
 #page-content .chub-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px;border-bottom:1px solid #262626}
@@ -333,7 +337,7 @@ details>summary::-webkit-details-marker{display:none}
 #page-content .chub-tab.on{color:#0A0A0A;background:var(--y)}
 #page-content .chub-tab:hover:not(.on){color:#fff}
 #page-content .chub-card{background:#141414;border:1px solid #262626;border-radius:14px;padding:16px 18px;margin-bottom:14px}
-#page-content .chub-card-title{font-family:Georgia,serif;font-size:16px;font-weight:700;margin-bottom:10px;color:#fff}
+#page-content .chub-card-title{font-family:var(--font-display);font-size:17px;font-weight:600;margin-bottom:10px;color:#fff}
 #page-content .chub-post{background:#1a1a1a;border:1px solid #2a2a2a;border-left:4px solid #888;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
 #page-content .chub-post:hover{border-color:#555}
 #page-content .chub-post.overdue{box-shadow:inset 3px 0 0 #FF5252}
@@ -3655,7 +3659,7 @@ function renderSessionPlan(id){
   document.getElementById('sessions-list').innerHTML=`
     <div class="card" style="margin-bottom:12px">
       <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between">
-        <div style="font-family:Georgia,serif;font-size:20px;font-weight:700">${escHtml(s.name||'Session')}</div>
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:700">${escHtml(s.name||'Session')}</div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <label style="font-size:11px;color:var(--mut)">Date <input type="date" class="form-input" style="width:auto;display:inline-block;padding:4px 8px" value="${s.date||''}" onchange="sessSetField('${id}','date',this.value)"></label>
           <select class="form-select" style="width:auto;display:inline-block;padding:4px 8px" onchange="sessSetField('${id}','status',this.value)"><option${s.status!=='Complete'?' selected':''}>Upcoming</option><option${s.status==='Complete'?' selected':''}>Complete</option></select>
@@ -3881,7 +3885,7 @@ function renderContentStrategy(){
   const chip=t=>`<span class="tag" style="background:var(--bg);color:var(--txt);border:1px solid var(--bdr);font-size:10px;margin:2px 2px 0 0">${escHtml(t)}</span>`;
   el.innerHTML=`<div class="card" style="border-left:4px solid var(--y)">
     <details>
-      <summary style="cursor:pointer;font-family:Georgia,serif;font-size:16px;font-weight:700;outline:none">Content Strategy · Croo x Ultimate Founder</summary>
+      <summary style="cursor:pointer;font-family:var(--font-display);font-size:16px;font-weight:700;outline:none">Content Strategy · Croo x Ultimate Founder</summary>
       <div style="margin-top:10px">
         <div style="font-style:italic;font-size:13px;margin-bottom:4px">"${escHtml(CONTENT_NARRATIVE)}"</div>
         <div style="font-size:11px;color:var(--mut);margin-bottom:12px">Cadence: LinkedIn (Danny) Mon, Wed, Fri · Instagram Reels Tue, Thu · Funnel: ${CONTENT_FUNNEL.join(' → ')}</div>
@@ -5070,7 +5074,7 @@ function renderFourBox(){
   fbUpdateBadge(reds);
   const header=`
     <div class="card" style="margin-bottom:12px">
-      <div style="font-family:Georgia,serif;font-size:20px;font-weight:700">The 4 Box Model</div>
+      <div style="font-family:var(--font-display);font-size:20px;font-weight:700">The 4 Box Model</div>
       <div style="font-size:12px;color:var(--mut);margin-top:2px">Guy Warren · Build the system, then scale.</div>
       <div style="font-size:12px;margin-top:10px;line-height:1.6">Every business runs on four boxes. Agree the few things that matter in each, then track them. Aim for three key metrics per box, twelve in total. These are your <strong>True North</strong>. Anything off target gets an improvement plan and a monthly review.</div>
       <div style="display:flex;gap:18px;margin-top:12px;flex-wrap:wrap">
@@ -5093,7 +5097,7 @@ function renderFourBox(){
       </div>`).join(''):`<div style="font-size:11px;color:var(--mut);padding:8px 0;border-top:1px solid var(--bdr)">No metrics yet. Add up to three.</div>`;
     return `<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div><div style="font-family:Georgia,serif;font-size:15px;font-weight:700">${escHtml(b.name)}</div><div style="font-size:11px;color:var(--mut)">${escHtml(b.sub)}</div></div>
+        <div><div style="font-family:var(--font-display);font-size:15px;font-weight:700">${escHtml(b.name)}</div><div style="font-size:11px;color:var(--mut)">${escHtml(b.sub)}</div></div>
         <span class="tag ${overCap?'tag-a':'tag-g'}" style="font-size:10px;white-space:nowrap">${b.metrics.length}/3</span>
       </div>
       ${rows}
