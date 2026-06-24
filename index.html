@@ -281,7 +281,42 @@ details>summary::-webkit-details-marker{display:none}
   .modal-overlay{padding:10px}
   .modal{padding:18px}
   #hq-fab{bottom:16px;right:16px}
+  .okr-grid{grid-template-columns:1fr !important}
+  .okr-msg{font-size:18px !important}
 }
+/* ═══ AI-GUIDED OKR SESSION (full-screen, readable across a room) ═══ */
+#okr-session{position:fixed;inset:0;z-index:2000;background:var(--k);color:var(--w);display:none;flex-direction:column;font-family:'Montserrat',sans-serif}
+.okr-top{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid #26262b;flex-wrap:wrap}
+.okr-top .okr-brand{font-weight:800;letter-spacing:.5px;font-size:13px;color:var(--y)}
+.okr-phases{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+.okr-phase{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:4px 9px;border-radius:20px;background:#1c1c20;color:#7d7d85;white-space:nowrap}
+.okr-phase.on{background:var(--y);color:var(--k)}
+.okr-phase.done{background:#23341f;color:var(--grn)}
+.okr-grid{flex:1;display:grid;grid-template-columns:1.3fr 1fr;gap:0;min-height:0}
+.okr-convo{display:flex;flex-direction:column;padding:30px 40px;min-height:0;overflow:auto}
+.okr-msg{font-size:25px;line-height:1.4;font-weight:600;max-width:760px;margin:auto auto 22px;width:100%}
+.okr-msg .okr-q{color:var(--w)}
+.okr-status{font-size:13px;color:#8a8a92;min-height:18px;margin-bottom:8px;max-width:760px;width:100%;margin-left:auto;margin-right:auto}
+.okr-answer{max-width:760px;width:100%;margin:0 auto}
+.okr-answer textarea{width:100%;background:#161619;color:var(--w);border:1px solid #33333a;border-radius:12px;padding:14px 16px;font-size:17px;font-family:inherit;line-height:1.5;resize:vertical;min-height:70px}
+.okr-answer textarea:focus{outline:none;border-color:var(--y)}
+.okr-build{background:#0f0f11;border-left:1px solid #26262b;padding:22px 24px;overflow:auto;min-height:0}
+.okr-build h3{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:#7d7d85;margin:0 0 14px}
+.okr-ob{background:#161619;border:1px solid #2a2a30;border-left:3px solid var(--y);border-radius:10px;padding:13px 15px;margin-bottom:12px}
+.okr-ob-st{font-size:15px;font-weight:700;line-height:1.35;margin-bottom:8px}
+.okr-ob-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:9px}
+.okr-chip{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#23232a;color:#b6b6bf}
+.okr-chip.owner{background:#1d2b3a;color:#7fb4e6}
+.okr-chip.warn{background:#3a2f1d;color:#e6b86b}
+.okr-chip.risk{background:#3a1f1f;color:#e68b8b}
+.okr-kr{font-size:12px;line-height:1.5;color:#c7c7d0;padding:6px 0;border-top:1px solid #23232a;display:flex;gap:8px}
+.okr-kr .okr-kr-x{color:#6f6f78;flex-shrink:0}
+.okr-risk{font-size:11px;color:#c98b8b;margin-top:7px}
+.okr-empty{color:#5f5f68;font-size:13px;text-align:center;padding:40px 10px}
+.okr-mini{background:none;border:1px solid #3a3a42;color:#b6b6bf;font-size:10px;padding:3px 8px;border-radius:6px;cursor:pointer;margin-left:6px}
+.okr-mini:hover{border-color:var(--y);color:var(--y)}
+.okr-conf-hi{color:var(--amb);font-size:11px}
+.okr-conf-lo{color:var(--red);font-size:11px}
 </style>
 </head>
 <body>
@@ -757,6 +792,65 @@ details>summary::-webkit-details-marker{display:none}
     <div class="modal-footer" id="modal-footer"></div>
   </div>
 </div>
+
+<!-- AI-GUIDED OKR SESSION OVERLAY -->
+<div id="okr-session">
+  <div class="okr-top">
+    <span class="okr-brand">TUF · OKR SESSION</span>
+    <div class="okr-phases" id="okr-phases"></div>
+    <button class="btn btn-ghost btn-sm" onclick="okrPause()">Pause &amp; exit</button>
+    <button class="btn btn-k btn-sm" onclick="okrFinish()">Finish &amp; save</button>
+  </div>
+  <div class="okr-grid">
+    <div class="okr-convo">
+      <div class="okr-msg" id="okr-msg"></div>
+      <div class="okr-status" id="okr-status"></div>
+      <div class="okr-answer">
+        <textarea id="okr-input" placeholder="Type the room's answer, then Send…" onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();okrSend();}"></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+          <span style="font-size:11px;color:#5f5f68">Cmd/Ctrl + Enter to send</span>
+          <button class="btn btn-k" id="okr-send" onclick="okrSend()">Send →</button>
+        </div>
+      </div>
+    </div>
+    <div class="okr-build">
+      <h3>OKRs taking shape</h3>
+      <div id="okr-build-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- OKR facilitator system prompt (text/plain so backticks, ${} and apostrophes need no escaping) -->
+<script type="text/plain" id="okr-sys">You are facilitating a live Q3 strategy and OKR session for our team, inside our app. One person in the room types the room's answers to you, and your messages appear on a shared screen, so keep every message short enough to read aloud. You are a sharp, candid facilitator and OKR coach. Your job is to leave the room with a small set of strong, measurable objectives, not a long list of soft ones. Aim every challenge at the idea, never at the person.
+With each turn you receive the full set of objectives and key results agreed so far as structured data. You have no memory between turns, so rely only on what is sent to you.
+Run the session through these phases, moving through them one at a time: frame, diverge, converge to at most five objectives (default three), sharpen each objective into a clear outcome based statement, define 2 to 4 measurable key results per objective (each with a baseline and a target, from X to Y by a date), stress test for risks and dependencies and capacity, assign one accountable owner per objective and a starting confidence from 0 to 10, then synthesise.
+Rules:
+* Ask one question at a time and wait for the answer. Never present several questions at once.
+* Reflect each answer back in one tight sentence before building on it.
+* Reject key results that are tasks, binary deliverables dressed as metrics, or vanity numbers that can rise without the objective actually being met.
+* Flag any confidence above 9 as possibly not ambitious enough, and below 4 as possibly unrealistic or under resourced.
+* If the team commits to more than they can deliver against their stated capacity, say so plainly and make them cut.
+Output format, every turn, with no exceptions: First, your short message to the room (one question, one reflection, or one summary). Then, on a new line, a fenced json code block containing the complete current set, using exactly this shape:
+json
+```json
+{
+  "phase": "<one of: frame, diverge, converge, sharpen, key_results, stress_test, owners, synthesise>",
+  "objectives": [
+    {
+      "id": "<stable id>",
+      "statement": "<objective text>",
+      "owner": "<name or empty>",
+      "confidence": "<number 0 to 10 or null>",
+      "keyResults": [
+        {"id": "<stable id>", "description": "<text>", "baseline": "<value>", "target": "<value>", "measure": "<how tracked>", "dueDate": "<date>"}
+      ],
+      "risks": ["<text>"]
+    }
+  ],
+  "openQuestions": ["<text>"]
+}
+```
+Always return the complete current set, not a diff, so the app can replace its state cleanly. Put nothing after the json block.</script>
 
 <script>
 // ═══ CONFIG & DATA LAYER ═══════════════════════════════════════════════════
@@ -3885,6 +3979,206 @@ let goalsQuarter=GOAL_QUARTERS.includes(currentQuarterKey())?currentQuarterKey()
 function setGoalsQuarter(q){goalsQuarter=q;renderGoals();}
 function editIndivGoalQ(person){const goals=ls.get('tuf_goals',{});const cur=((goals.indivQ||{})[goalsQuarter]||{})[person]||'';showModal(`${person} · ${goalsQuarter.replace('-',' ')}`,`<div class="form-row"><label class="form-label">Goals for ${goalsQuarter.replace('-',' ')}</label><textarea class="form-textarea" id="eigq-val" style="min-height:110px">${escHtml(cur)}</textarea></div>`,`<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-k" onclick="saveIndivGoalQ('${person}')">Save</button>`);}
 function saveIndivGoalQ(person){const goals=ls.get('tuf_goals',{});if(!goals.indivQ)goals.indivQ={};if(!goals.indivQ[goalsQuarter])goals.indivQ[goalsQuarter]={};goals.indivQ[goalsQuarter][person]=document.getElementById('eigq-val').value.trim();ls.set('tuf_goals',goals);closeModal();renderGoals();}
+// ═══ AI-GUIDED OKR SESSION ═══════════════════════════════════════════════════
+const OKR_SYSTEM_PROMPT=(document.getElementById('okr-sys')?.textContent||'').trim();
+const OKR_MODEL='claude-sonnet-4-6';
+const OKR_PHASES=[['frame','Frame'],['diverge','Diverge'],['converge','Converge'],['sharpen','Sharpen'],['key_results','Key results'],['stress_test','Stress test'],['owners','Owners'],['synthesise','Synthesise']];
+const OKR_TEAM=['Danny','Joe','Jasper','James','Chloe'];
+let okrSession=null; // in-memory mirror of tuf_okr_session
+function okrGet(){ return ls.get('tuf_okrs',[])||[]; }
+function okrSetAll(a){ ls.set('tuf_okrs',a); }
+function okrForQuarter(q){ return okrGet().filter(o=>o.quarter===q); }
+function okrNum(v){ v=(v==null?'':v).toString().trim(); if(v==='')return null; const n=Number(v); return isNaN(n)?null:Math.max(0,Math.min(10,n)); }
+function okrPersist(){ if(okrSession){ okrSession.updatedAt=new Date().toISOString(); ls.set('tuf_okr_session',okrSession); } }
+
+// Split a model turn into the short room message and the structured json state.
+function okrParseTurn(text){
+  text=text||''; let jsonStr=null, message=text.trim();
+  let m=text.match(/```json\s*([\s\S]*?)```/i) || text.match(/```\s*([\s\S]*?)```/);
+  if(m){ jsonStr=m[1]; message=text.slice(0,m.index).trim(); }
+  else { const s=text.indexOf('{'), e=text.lastIndexOf('}'); if(s>=0&&e>s){ jsonStr=text.slice(s,e+1); message=text.slice(0,s).trim(); } }
+  let state=null;
+  if(jsonStr){ try{ state=JSON.parse(jsonStr.trim()); }catch(_){ try{ const s2=jsonStr.indexOf('{'),e2=jsonStr.lastIndexOf('}'); if(s2>=0&&e2>s2) state=JSON.parse(jsonStr.slice(s2,e2+1)); }catch(__){ state=null; } } }
+  if(!message && !state) message=text.trim();
+  return { message, state };
+}
+
+function okrOpenOverlay(){ document.getElementById('okr-session').style.display='flex'; document.body.style.overflow='hidden'; }
+function okrCloseOverlay(){ document.getElementById('okr-session').style.display='none'; document.body.style.overflow=''; }
+function okrShowMessage(msg){ document.getElementById('okr-msg').innerHTML='<span class="okr-q">'+escHtml(msg||'…')+'</span>'; }
+function okrRenderPhases(active){
+  const order=OKR_PHASES.map(p=>p[0]); const ai=order.indexOf(active);
+  document.getElementById('okr-phases').innerHTML=OKR_PHASES.map((p,i)=>{ const cls=p[0]===active?'on':(ai>=0&&i<ai?'done':''); return `<span class="okr-phase ${cls}">${p[1]}</span>`; }).join('');
+}
+function okrConfChip(c){ if(c==null||c==='')return ''; const n=Number(c); if(isNaN(n))return ''; const ex=n>9?' warn':n<4?' risk':''; return `<span class="okr-chip${ex}">conf ${n}/10${n>9?' · stretch?':n<4?' · risky?':''}</span>`; }
+function okrRenderBuild(){
+  const el=document.getElementById('okr-build-list'); if(!el)return;
+  const obs=(okrSession&&okrSession.state&&okrSession.state.objectives)||[];
+  if(!obs.length){ el.innerHTML='<div class="okr-empty">Objectives will appear here as the room agrees them.</div>'; return; }
+  el.innerHTML=obs.map((o,oi)=>`<div class="okr-ob">
+    <div class="okr-ob-st">${escHtml(o.statement||'(objective)')} <button class="okr-mini" onclick="okrEditWorking(${oi})">edit</button><button class="okr-mini" onclick="okrDeleteWorking(${oi})">✕</button></div>
+    <div class="okr-ob-meta">${o.owner?`<span class="okr-chip owner">${escHtml(o.owner)}</span>`:''}${okrConfChip(o.confidence)}</div>
+    ${(o.keyResults||[]).map(k=>`<div class="okr-kr"><span class="okr-kr-x">KR</span><span>${escHtml(k.description||'')}${(k.baseline||k.target)?` <span style="color:#7d7d85">(${escHtml(k.baseline||'?')} → ${escHtml(k.target||'?')}${k.dueDate?' by '+escHtml(k.dueDate):''})</span>`:''}${k.measure?` · ${escHtml(k.measure)}`:''}</span></div>`).join('')}
+    ${(o.risks&&o.risks.length)?`<div class="okr-risk">⚠ ${o.risks.map(escHtml).join('; ')}</div>`:''}
+  </div>`).join('');
+}
+// Hand-edits to the working set mid-session (native prompts avoid clashing with the full-screen overlay).
+function okrEditWorking(oi){ const o=okrSession&&okrSession.state.objectives[oi]; if(!o)return; const v=prompt('Edit objective statement:',o.statement||''); if(v===null)return; o.statement=v.trim(); okrPersist(); okrRenderBuild(); }
+function okrDeleteWorking(oi){ if(!okrSession||!confirm('Remove this objective from the working set?'))return; okrSession.state.objectives.splice(oi,1); okrPersist(); okrRenderBuild(); }
+
+async function okrStartSession(resume){
+  const saved=ls.get('tuf_okr_session',null);
+  if(resume && saved && saved.status==='active'){ okrSession=saved; }
+  else {
+    if(saved && saved.status==='active' && !confirm('Start a new session for '+goalsQuarter.replace('-',' ')+'? This replaces the paused session.')) return;
+    okrSession={ quarter:goalsQuarter, phase:'frame', messages:[], state:{phase:'frame',objectives:[],openQuestions:[]}, status:'active', updatedAt:new Date().toISOString() };
+  }
+  okrOpenOverlay(); okrRenderPhases(okrSession.phase); okrRenderBuild();
+  const ta=document.getElementById('okr-input'); if(ta){ ta.value=''; }
+  if(okrSession.messages.length){
+    const last=[...okrSession.messages].reverse().find(m=>m.role==='assistant');
+    const parsed=last?okrParseTurn(last.content):{message:''};
+    okrShowMessage(parsed.message||'Welcome back. Pick up where the room left off, or type the next answer.');
+    okrPersist();
+  } else {
+    okrShowMessage('Starting the session…');
+    okrTurn('Begin the '+okrSession.quarter.replace('-',' ')+' session. Open with the frame phase: one short question to the room.');
+  }
+}
+function okrSend(){ const ta=document.getElementById('okr-input'); const v=(ta.value||'').trim(); if(!v)return; ta.value=''; okrTurn(v); }
+async function okrTurn(userText){
+  if(!okrSession)return;
+  const btn=document.getElementById('okr-send'), status=document.getElementById('okr-status');
+  const stateJson=JSON.stringify(okrSession.state||{objectives:[]});
+  const content=userText+'\n\nCurrent agreed set (authoritative — the team may have hand-edited this; treat it as the source of truth, keep ids stable):\n```json\n'+stateJson+'\n```';
+  okrSession.messages.push({role:'user',content}); okrPersist();
+  if(btn){ btn.disabled=true; btn.textContent='Thinking…'; }
+  if(status) status.textContent='Facilitator is thinking…';
+  try{
+    const data=await claudeCall({ model:OKR_MODEL, max_tokens:2000, system:OKR_SYSTEM_PROMPT, messages:okrSession.messages.slice(-16) });
+    const text=data.content?.[0]?.text||'';
+    okrSession.messages.push({role:'assistant',content:text});
+    const { message, state }=okrParseTurn(text);
+    if(state && Array.isArray(state.objectives)) okrSession.state=state;
+    if(state && state.phase) okrSession.phase=state.phase;
+    okrShowMessage(message || (state?'Updated — see the panel. Type the next answer.':text));
+    okrRenderPhases(okrSession.phase); okrRenderBuild(); okrPersist();
+    if(status) status.textContent='';
+  }catch(e){
+    okrSession.messages.pop(); okrPersist(); // drop the unanswered turn so history stays alternating
+    const ta=document.getElementById('okr-input'); if(ta && !ta.value) ta.value=userText;
+    if(status) status.textContent='Error: '+e.message+' — press Send to try again.';
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='Send →'; }
+    const ta=document.getElementById('okr-input'); if(ta) ta.focus();
+  }
+}
+function okrPause(){ if(okrSession){ okrSession.status='active'; okrPersist(); } okrCloseOverlay(); renderGoals(); }
+function okrFinish(){
+  if(!okrSession){ okrCloseOverlay(); return; }
+  const obs=(okrSession.state&&okrSession.state.objectives)||[];
+  const valid=obs.filter(o=>(o.statement||'').trim());
+  if(!valid.length){ if(!confirm('No objectives captured yet. Exit without saving?'))return; okrSession.status='done'; okrPersist(); okrCloseOverlay(); renderGoals(); return; }
+  if(!confirm('Save '+valid.length+' objective'+(valid.length!==1?'s':'')+' to '+okrSession.quarter.replace('-',' ')+' Goals & OKRs?')) return;
+  const now=new Date().toISOString(); const all=okrGet();
+  valid.forEach(o=>{
+    const oid=uid();
+    const keyResults=(o.keyResults||[]).map(k=>({ id:uid(), description:(k.description||'').trim(), baseline:(k.baseline||'').toString(), target:(k.target||'').toString(), measure:(k.measure||'').toString(), dueDate:(k.dueDate||'').toString(), currentValue:(k.baseline||'').toString(), objectiveId:oid }));
+    all.push({ id:oid, statement:o.statement.trim(), owner:o.owner||'', confidence:okrNum(o.confidence), status:'active', quarter:okrSession.quarter, keyResults, risks:Array.isArray(o.risks)?o.risks.filter(Boolean):[], createdAt:now, updatedAt:now });
+  });
+  okrSetAll(all);
+  okrSession.status='done'; okrPersist(); okrCloseOverlay();
+  goalsQuarter=okrSession.quarter;
+  nav('goals', document.querySelector('[data-page=goals]'));
+}
+
+// ── Manual CRUD on the canonical tuf_okrs store (Goals page; AI never gates) ──
+function okrOwnerSelect(id,sel){ return `<select class="form-select" id="${id}"><option value="">(no owner)</option>${OKR_TEAM.map(p=>`<option ${p===sel?'selected':''}>${p}</option>`).join('')}</select>`; }
+function okrAddObjective(){
+  showModal('New objective · '+goalsQuarter.replace('-',' '),
+   `<div class="form-row"><label class="form-label">Objective (an outcome, not a task)</label><textarea class="form-textarea" id="ob-st" style="min-height:70px"></textarea></div>
+    <div class="grid-2"><div class="form-row"><label class="form-label">Owner</label>${okrOwnerSelect('ob-owner','')}</div><div class="form-row"><label class="form-label">Confidence (0–10)</label><input class="form-input" id="ob-conf" type="number" min="0" max="10" placeholder="e.g. 6"></div></div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-k" onclick="okrSaveNewObjective()">Add objective</button>`);
+}
+function okrSaveNewObjective(){
+  const st=(document.getElementById('ob-st').value||'').trim(); if(!st){ alert('Add an objective statement.'); return; }
+  const now=new Date().toISOString(); const all=okrGet();
+  all.push({ id:uid(), statement:st, owner:document.getElementById('ob-owner').value, confidence:okrNum(document.getElementById('ob-conf').value), status:'active', quarter:goalsQuarter, keyResults:[], risks:[], createdAt:now, updatedAt:now });
+  okrSetAll(all); closeModal(); renderGoals();
+}
+function okrEditObjective(id){
+  const o=okrGet().find(x=>x.id===id); if(!o)return;
+  showModal('Edit objective',
+   `<div class="form-row"><label class="form-label">Objective</label><textarea class="form-textarea" id="ob-st" style="min-height:70px">${escHtml(o.statement)}</textarea></div>
+    <div class="grid-2"><div class="form-row"><label class="form-label">Owner</label>${okrOwnerSelect('ob-owner',o.owner)}</div><div class="form-row"><label class="form-label">Confidence (0–10)</label><input class="form-input" id="ob-conf" type="number" min="0" max="10" value="${o.confidence==null?'':o.confidence}"></div></div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-k" onclick="okrSaveObjective('${id}')">Save</button>`);
+}
+function okrSaveObjective(id){
+  const all=okrGet(); const o=all.find(x=>x.id===id); if(!o)return;
+  o.statement=(document.getElementById('ob-st').value||'').trim()||o.statement; o.owner=document.getElementById('ob-owner').value; o.confidence=okrNum(document.getElementById('ob-conf').value); o.updatedAt=new Date().toISOString();
+  okrSetAll(all); closeModal(); renderGoals();
+}
+function okrDeleteObjective(id){ if(!confirm('Delete this objective and its key results?'))return; okrSetAll(okrGet().filter(x=>x.id!==id)); renderGoals(); }
+function okrAddKR(objId){ okrKRModal(objId,null); }
+function okrEditKR(objId,krId){ okrKRModal(objId,krId); }
+function okrKRModal(objId,krId){
+  const o=okrGet().find(x=>x.id===objId); if(!o)return; const k=(krId?(o.keyResults||[]).find(x=>x.id===krId):null)||{};
+  showModal(krId?'Edit key result':'New key result',
+   `<div class="form-row"><label class="form-label">Description (a measure, not a task)</label><input class="form-input" id="kr-desc" value="${escHtml(k.description||'')}"></div>
+    <div class="grid-2"><div class="form-row"><label class="form-label">Baseline (from)</label><input class="form-input" id="kr-base" value="${escHtml(k.baseline||'')}"></div><div class="form-row"><label class="form-label">Target (to)</label><input class="form-input" id="kr-target" value="${escHtml(k.target||'')}"></div></div>
+    <div class="grid-2"><div class="form-row"><label class="form-label">Measure (how tracked)</label><input class="form-input" id="kr-measure" value="${escHtml(k.measure||'')}"></div><div class="form-row"><label class="form-label">Due date</label><input class="form-input" id="kr-due" type="date" value="${escHtml(k.dueDate||'')}"></div></div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-k" onclick="okrSaveKR('${objId}','${krId||''}')">Save</button>`);
+}
+function okrSaveKR(objId,krId){
+  const all=okrGet(); const o=all.find(x=>x.id===objId); if(!o)return; if(!o.keyResults)o.keyResults=[];
+  const desc=(document.getElementById('kr-desc').value||'').trim(); if(!desc){ alert('Add a description.'); return; }
+  const f={ description:desc, baseline:document.getElementById('kr-base').value.trim(), target:document.getElementById('kr-target').value.trim(), measure:document.getElementById('kr-measure').value.trim(), dueDate:document.getElementById('kr-due').value };
+  if(krId){ const k=o.keyResults.find(x=>x.id===krId); if(k) Object.assign(k,f); }
+  else { o.keyResults.push({ id:uid(), objectiveId:objId, currentValue:f.baseline, description:f.description, baseline:f.baseline, target:f.target, measure:f.measure, dueDate:f.dueDate }); }
+  o.updatedAt=new Date().toISOString(); okrSetAll(all); closeModal(); renderGoals();
+}
+function okrDeleteKR(objId,krId){ const all=okrGet(); const o=all.find(x=>x.id===objId); if(!o)return; o.keyResults=(o.keyResults||[]).filter(x=>x.id!==krId); o.updatedAt=new Date().toISOString(); okrSetAll(all); renderGoals(); }
+
+function okrObjectiveCard(o){
+  let confHtml='';
+  if(o.confidence!=null&&o.confidence!==''){ const n=Number(o.confidence); confHtml=`<span class="tag tag-k" style="font-size:10px">conf ${n}/10</span>${n>9?'<span class="okr-conf-hi">stretch?</span>':n<4?'<span class="okr-conf-lo">risky?</span>':''}`; }
+  const owner=o.owner?`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:${USER_COLOURS[o.owner]||'#888'}"></span>${escHtml(o.owner)}</span>`:'<span style="color:var(--mut)">No owner</span>';
+  return `<div class="card" style="margin-bottom:10px;border-left:4px solid var(--y)">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
+      <div style="font-weight:700;font-size:14px;flex:1;min-width:200px">${escHtml(o.statement)}</div>
+      <div style="display:flex;gap:5px;flex-shrink:0"><button class="btn btn-ghost btn-sm" onclick="okrEditObjective('${o.id}')">Edit</button><button class="btn btn-ghost btn-sm" onclick="okrDeleteObjective('${o.id}')">✕</button></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:11px;margin:7px 0 2px;color:var(--mut)">${owner} ${confHtml}</div>
+    <div style="margin-top:4px">
+      ${(o.keyResults||[]).map(k=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--bdr);font-size:12px">
+        <span style="font-weight:700;color:var(--blu);flex-shrink:0">KR</span>
+        <span style="flex:1">${escHtml(k.description||'')}${(k.baseline||k.target)?` <span style="color:var(--mut)">(${escHtml(k.baseline||'?')} → ${escHtml(k.target||'?')}${k.dueDate?' by '+escHtml(fmtShort(k.dueDate)):''})</span>`:''}${k.measure?` <span style="color:var(--mut)">· ${escHtml(k.measure)}</span>`:''}</span>
+        <span style="display:flex;gap:4px;flex-shrink:0"><button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:10px" onclick="okrEditKR('${o.id}','${k.id}')">edit</button><button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:10px" onclick="okrDeleteKR('${o.id}','${k.id}')">✕</button></span>
+      </div>`).join('')}
+      ${(o.risks&&o.risks.length)?`<div style="font-size:11px;color:var(--red);margin-top:6px">⚠ ${o.risks.map(escHtml).join('; ')}</div>`:''}
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="okrAddKR('${o.id}')">+ Key result</button>
+    </div>
+  </div>`;
+}
+function okrSectionHtml(){
+  const saved=ls.get('tuf_okr_session',null);
+  const hasResume=saved && saved.status==='active';
+  const resumeNote=hasResume?` <span style="font-size:10px;color:var(--mut)">(paused: ${saved.quarter.replace('2026-','')})</span>`:'';
+  const qLabel=goalsQuarter.replace('2026-','');
+  const list=okrForQuarter(goalsQuarter);
+  const body=list.length
+    ? list.map(okrObjectiveCard).join('')
+    : `<div class="card" style="text-align:center;color:var(--mut);font-size:13px">No objectives set for ${qLabel} yet. Run a live session to build them with the team, or add one by hand.</div>`;
+  return `<div class="sec-hdr" style="margin-top:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <span>Objectives &amp; Key Results · ${qLabel}${resumeNote}</span>
+      <span style="display:flex;gap:6px;flex-wrap:wrap">
+        ${hasResume?`<button class="btn btn-y btn-sm" onclick="okrStartSession(true)">▶ Resume session</button>`:''}
+        <button class="btn btn-k btn-sm" onclick="okrStartSession(false)">✦ Run ${qLabel} session</button>
+        <button class="btn btn-ghost btn-sm" onclick="okrAddObjective()">+ Add objective</button>
+      </span>
+    </div>${body}`;
+}
+
 function renderGoals(){
   const goals=ls.get('tuf_goals',{
     vision:'Build a highly profitable business with a small team that changes the lives of founders.',
@@ -3926,6 +4220,7 @@ function renderGoals(){
         <button class="btn btn-ghost btn-sm" onclick="editIndivGoalQ('${p}')">Edit</button>
       </div>`).join('')}
     </div>
+    ${okrSectionHtml()}
   `;
 }
 function editGoalModal(key,current){showModal('Edit Goal',`<div class="form-row"><textarea class="form-textarea" id="eg-val" style="min-height:100px">${current}</textarea></div>`,`<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-k" onclick="saveGoal('${key}')">Save</button>`);}
