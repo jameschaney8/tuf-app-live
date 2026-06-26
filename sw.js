@@ -2,7 +2,7 @@
 // UPDATE-SAFE BY DESIGN: navigations are network-first, so an online reload
 // always gets the latest app. The cache is only the offline fallback.
 // Bump CACHE when this file or the cached shell list changes.
-const CACHE = 'tuf-v6';
+const CACHE = 'tuf-v7';
 const SHELL = [
   './',
   './index.html',
