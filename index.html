@@ -1336,6 +1336,7 @@ function initApp(user){
   // fixSaturdayContentPosts(); — removed: the "no Saturdays" rule and its silent date-shifting are gone in the calendar rebuild
   padelSeedJasper();
   seedClientContacts();
+  seedEventAttendees();
   // Always ensure team emails are set, pruned to the current roster (drops anyone removed, e.g. Lucy)
   const storedEmails = ls.get('tuf_team_emails',{});
   const merged = {...TEAM_EMAIL_DEFAULTS,...storedEmails};
@@ -3231,6 +3232,31 @@ const EL_SOURCES=['Padel','Golf Day','Dinner','Other Event'];
 
 // ═══ EVENT CRM (people who attended events) ═══
 let elFilterEvent='all', elFilterOwner='all', elFilterMin=0;
+// One-time import of known event attendees (businesses inferred from email domains; editable).
+const EVENT_CRM_SEED=[
+  {name:'Stuart J Blackburne',email:'stuartblackburne09@yahoo.co.uk',co:''},
+  {name:'Chris Blount',email:'chris.blount@blountshutters.co.uk',co:'Blount Shutters'},
+  {name:'Edwina Jenner',email:'edwina@edwinajenner.co.uk',co:'Edwina Jenner'},
+  {name:'Barrie Jacobs',email:'barrie@smartsourcesavings.co.uk',co:'Smart Source Savings'},
+  {name:'Oliver Crudgington & Steve Nugent',email:'oliver@bartonhawk.co.uk',co:'Barton Hawk'},
+  {name:'Lee Cash',email:'lee@oakhill.london',co:'Oakhill'},
+  {name:'M. Rhodes',email:'m.rhodes@sobellrhodes.co.uk',co:'Sobell Rhodes'},
+  {name:'Kieran Turner',email:'kieran@esbg.co.uk',co:'ESBG'},
+  {name:'Russell Missions',email:'russell@vibl.co.uk',co:'VIBL'},
+  {name:'Lucy Jackson',email:'lucyjackson@ymail.com',co:''},
+  {name:'N Grime',email:'nick.grime@gmail.com',co:''},
+  {name:'Carla Nokes',email:'carla@thefitnessdirectory.uk',co:'The Fitness Directory'},
+  {name:'Marko Johns',email:'markojohns@yahoo.co.uk',co:''},
+];
+function seedEventAttendees(){
+  if(localStorage.getItem('tuf_eventcrm_seed_v1')==='1') return;
+  const list=ls.get('tuf_event_attendees',[])||[];
+  const have=new Set(list.map(a=>(a.email||'').toLowerCase()));
+  let added=0;
+  EVENT_CRM_SEED.forEach(s=>{ const e=(s.email||'').toLowerCase(); if(e&&have.has(e))return; list.push({id:uid(),name:s.name,co:s.co||'',email:s.email,phone:'',event:'',eventDate:'',score:'',owner:'',notes:'',addedDate:new Date().toISOString().slice(0,10)}); have.add(e); added++; });
+  if(added) ls.set('tuf_event_attendees',list);
+  localStorage.setItem('tuf_eventcrm_seed_v1','1');
+}
 function elClampScore(v){ v=(v==null?'':v).toString().trim(); if(v==='')return ''; return Math.max(1,Math.min(10,parseInt(v)||1)); }
 function elScoreColor(s){ const n=parseInt(s)||0; return n>=8?'var(--grn)':n>=4?'var(--amb)':'var(--mut)'; }
 function elEventsPanel(events){
